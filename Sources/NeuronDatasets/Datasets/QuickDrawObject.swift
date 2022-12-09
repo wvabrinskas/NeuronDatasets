@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by William Vabrinskas on 4/5/22.
 //
@@ -361,3 +361,4 @@ public enum QuickDrawObject: String {
     Bundle.main.path(forResource: rawValue, ofType: "npy")
   }
 }
+

@@ -1,10 +1,3 @@
-//
-//  File.swift
-//  
-//
-//  Created by William Vabrinskas on 2/23/22.
-//
-
 import Foundation
 import NumSwift
 import Combine
