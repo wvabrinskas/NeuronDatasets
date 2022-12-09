@@ -8,8 +8,8 @@
 import Foundation
 import NumSwift
 import Combine
+import Neuron
  
-
 /// Creates an MNIST Dataset object to be used by a netowrk. The MNIST dataset is a set of 60000 grayscale hand-drawn numbers from 0-9.
 public class MNIST: Dataset {
   public var data: DatasetData = ([], []) {

@@ -9,6 +9,7 @@ import Foundation
 import NumSwift
 import Combine
 import Logger
+import Neuron
 
 @available(macOS 12.0, *)
 @available(iOS 15.0, *)
