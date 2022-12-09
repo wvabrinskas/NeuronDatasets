@@ -2,6 +2,15 @@ import XCTest
 import Neuron
 @testable import NeuronDatasets
 
+extension XCTestCase {
+  var isGithubCI: Bool {
+    if let value = ProcessInfo.processInfo.environment["CI"] {
+      return value == "true"
+    }
+    return false
+  }
+}
+
 final class NeuronDatasetsTests: XCTestCase {
   func testMNISTClassifier() async {
     guard isGithubCI == false else {
