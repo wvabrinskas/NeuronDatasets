@@ -28,7 +28,8 @@ public class QuickDrawDataset: Dataset, Logger {
   private let imageShape: (Int, Int, Int) = (28,28,1)
   private var correctLabel: [Float]
   private var zeroCentered: Bool
-  
+  public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
+
   public var complete: Bool = false
   public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
   

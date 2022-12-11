@@ -25,6 +25,7 @@ import Neuron
 ///                    logLevel: LogLevel = .none)
 /// ```
 public protocol Dataset {
+  var unitDataSize: TensorSize { get }
   /// The resulting dataset
   var data: DatasetData { get set }
   /// Indicator that the dataset has loaded

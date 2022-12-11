@@ -17,6 +17,7 @@ public class MNIST: Dataset {
   private var numToGet: Int?
   private var zeroCentered: Bool
   private var correctLabel: [Float] = []
+  public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
 
   public enum MNISTType: String, CaseIterable {
     case trainingSet = "train-images"

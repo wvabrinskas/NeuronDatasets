@@ -30,6 +30,7 @@ public final class CIFAR: Dataset {
   }
   
   public var complete: Bool = false
+  public let unitDataSize: TensorSize = .init(rows: 32, columns: 32, depth: 3)
   
   public var dataPassthroughSubject = PassthroughSubject<Neuron.DatasetData, Never>()
   private var correctLabel: [Float] = []
