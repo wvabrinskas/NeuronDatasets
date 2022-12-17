@@ -24,7 +24,7 @@ import Neuron
 ///                    zeroCentered: Bool = false,
 ///                    logLevel: LogLevel = .none)
 /// ```
-public protocol Dataset {
+public protocol Dataset: AnyObject {
   var unitDataSize: TensorSize { get }
   /// The resulting dataset
   var data: DatasetData { get set }
