@@ -12,11 +12,11 @@ public class MNIST: Dataset {
   }
   public var complete: Bool = false
   public let dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
-  
+  public var overrideLabel: [Float] = []
+
   private let mnistSize: [Int] = [28,28,1]
   private var numToGet: Int?
   private var zeroCentered: Bool
-  private var correctLabel: [Float] = []
   public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
 
   public enum MNISTType: String, CaseIterable {
@@ -63,12 +63,12 @@ public class MNIST: Dataset {
   ///   - label: The label override for each image. Optional as the MNIST dataset provides labels.
   ///   - zeroCentered: Determines if the dataset is scaled to be between -1 and 1 or between 0 and 1.
   public init(only num: Int? = nil,
-              label: [Float] = [],
+              overrideLabel: [Float] = [],
               zeroCentered: Bool = false) {
     if let num = num {
       self.numToGet = num
     }
-    self.correctLabel = label
+    self.overrideLabel = overrideLabel
     self.zeroCentered = zeroCentered
   }
   
@@ -168,8 +168,8 @@ public class MNIST: Dataset {
   }
   
   private func buildLabel(value: Int) -> [Float] {
-    if !self.correctLabel.isEmpty {
-      return correctLabel
+    if !self.overrideLabel.isEmpty {
+      return overrideLabel
     }
     
     guard value >= 0 else {

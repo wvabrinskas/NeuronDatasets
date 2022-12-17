@@ -34,6 +34,8 @@ public protocol Dataset {
   var dataPassthroughSubject: PassthroughSubject<DatasetData, Never> { get }
   /// Combine publisher for the dataset
   var dataPublisher: AnyPublisher<DatasetData, Never> { get }
+  /// Override the label that the dataset provides
+  var overrideLabel: [Float] { get set}
 
   /// Read the dataset file from a path
   /// - Parameters:

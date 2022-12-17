@@ -33,11 +33,11 @@ public final class CIFAR: Dataset {
   public let unitDataSize: TensorSize = .init(rows: 32, columns: 32, depth: 3)
   
   public var dataPassthroughSubject = PassthroughSubject<Neuron.DatasetData, Never>()
-  private var correctLabel: [Float] = []
+  public var overrideLabel: [Float] = []
   private let classType: ClassType
   
-  public init(classType: ClassType, label: [Float] = []) {
-    self.correctLabel = label
+  public init(classType: ClassType, overrideLabel: [Float] = []) {
+    self.overrideLabel = overrideLabel
     self.classType = classType
   }
   
@@ -68,8 +68,8 @@ public final class CIFAR: Dataset {
   }
   
   private func buildLabel(value: Int) -> [Float] {
-    if !self.correctLabel.isEmpty {
-      return correctLabel
+    if !self.overrideLabel.isEmpty {
+      return overrideLabel
     }
     
     guard value >= 0 else {

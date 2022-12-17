@@ -22,19 +22,18 @@ public class QuickDrawDataset: Dataset, Logger {
     }
   }
   
-  private let trainingCount: Int
-  private let validationCount: Int
-  private var objectToGet: QuickDrawObject
-  private let imageShape: (Int, Int, Int) = (28,28,1)
-  private var correctLabel: [Float]
-  private var zeroCentered: Bool
+  public var overrideLabel: [Float]
   public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
-
   public var complete: Bool = false
   public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
   
+  private let trainingCount: Int
+  private let validationCount: Int
+  private var objectToGet: QuickDrawObject
+  private var zeroCentered: Bool
+  
   public init(objectToGet: QuickDrawObject,
-              label: [Float],
+              overrideLabel: [Float] = [],
               trainingCount: Int = 1000,
               validationCount: Int = 1000,
               zeroCentered: Bool = false,
@@ -44,13 +43,15 @@ public class QuickDrawDataset: Dataset, Logger {
     self.objectToGet = objectToGet
     self.zeroCentered = zeroCentered
     self.logLevel = logLevel
-    self.correctLabel = label
+    self.overrideLabel = overrideLabel
   }
 
   public func build() async -> DatasetData {
     guard let path = objectToGet.url(), let url = URL(string: path) else {
       return data
     }
+    
+    let label = overrideLabel.isEmpty ? objectToGet.label() : overrideLabel
     
     do {
       let urlRequest = URLRequest(url: url)
@@ -67,15 +68,15 @@ public class QuickDrawDataset: Dataset, Logger {
         result = result.map { ($0 - 127.5) / 127.5 }
       }
       
-      let shaped = result.reshape(columns: imageShape.0).batched(into: imageShape.1)
+      let shaped = result.reshape(columns: unitDataSize.columns).batched(into: unitDataSize.rows)
       
       self.log(type: .success, priority: .low, message: "Successfully donwloaded dataset - \(shaped.count) samples")
 
       let training = Array(shaped[0..<trainingCount]).map { DatasetModel(data: Tensor($0),
-                                                                         label: Tensor(correctLabel)) }
+                                                                         label: Tensor(label)) }
       
       let validation = Array(shaped[trainingCount..<trainingCount + validationCount]).map { DatasetModel(data: Tensor($0),
-                                                                                                         label: Tensor(correctLabel)) }
+                                                                                                         label: Tensor(label)) }
       
       self.data = (training, validation)
       return self.data

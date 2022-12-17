@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum QuickDrawObject: String {
+public enum QuickDrawObject: String, CaseIterable {
   case aircraftCarrier = "aircraft carrier",
        airplane,
        alarmClock = "alarm clock",
@@ -359,6 +359,15 @@ public enum QuickDrawObject: String {
   
   func local() -> String? {
     Bundle.main.path(forResource: rawValue, ofType: "npy")
+  }
+  
+  func label() -> [Float] {
+    var totalLabels: [Float] = []
+    for i in 0..<Self.allCases.count {
+      totalLabels[i] = Self.allCases[i] == self ? 1 : 0
+    }
+    
+    return totalLabels
   }
 }
 
