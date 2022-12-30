@@ -9,6 +9,8 @@ import Combine
 import Foundation
 import Neuron
 
+public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
+
 /// The protocol that defines how to build a Neuron compatible dataset for training.
 /// Example Datasets are:
 /// ```

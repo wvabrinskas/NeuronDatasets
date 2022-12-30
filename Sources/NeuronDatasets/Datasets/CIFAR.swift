@@ -23,7 +23,7 @@ public final class CIFAR: Dataset {
     truck
   }
   
-  public var data: Neuron.DatasetData = ([], []) {
+  public var data: DatasetData = ([], []) {
     didSet {
       dataPassthroughSubject.send(data)
     }
@@ -32,7 +32,7 @@ public final class CIFAR: Dataset {
   public var complete: Bool = false
   public let unitDataSize: TensorSize = .init(rows: 32, columns: 32, depth: 3)
   
-  public var dataPassthroughSubject = PassthroughSubject<Neuron.DatasetData, Never>()
+  public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
   public var overrideLabel: [Float] = []
   private let classType: ClassType
   
@@ -41,7 +41,7 @@ public final class CIFAR: Dataset {
     self.classType = classType
   }
   
-  public func build() async -> Neuron.DatasetData {
+  public func build() async -> DatasetData {
     guard complete == false else {
       print("CIFAR has already been loaded")
       return data
