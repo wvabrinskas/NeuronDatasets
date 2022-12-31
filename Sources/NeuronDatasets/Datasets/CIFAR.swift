@@ -84,7 +84,7 @@ public final class CIFAR: Dataset {
     var data: [DatasetModel] = []
     
     for i in 1..<6 {
-      let path = Bundle(for: CIFAR.self).path(forResource: "data_batch_\(i)", ofType: "bin")
+      let path = Bundle.module.path(forResource: "data_batch_\(i)", ofType: "bin")
       guard let path = path else {
         return ([],[])
       }
