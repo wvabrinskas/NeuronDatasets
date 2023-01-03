@@ -58,6 +58,11 @@ public class ImageDataset: Dataset, Logger {
   }
   
   public func build() async -> DatasetData {
+    guard complete == false else {
+      print("ImageDataset has already been loaded")
+      return self.data
+    }
+    
     readDirectory()
     return self.data
   }
@@ -83,6 +88,11 @@ public class ImageDataset: Dataset, Logger {
   }
  
   private func readDirectory() {
+    guard complete == false else {
+      print("ImageDataset has already been loaded")
+      return
+    }
+    
     do {
       let contents = try FileManager.default.contentsOfDirectory(atPath: imagesDirectory)
       
@@ -104,6 +114,7 @@ public class ImageDataset: Dataset, Logger {
       }
       
       self.data = (training, validation)
+      complete = true
     } catch {
       print(error.localizedDescription)
     }
