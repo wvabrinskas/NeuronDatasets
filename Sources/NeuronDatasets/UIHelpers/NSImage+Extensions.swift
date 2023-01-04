@@ -25,6 +25,62 @@ public extension NSImage {
     var b: UInt8
   }
   
+  func asSquareRGBATensor(zeroCenter: Bool = false) -> Tensor {
+    guard let pixelData = self.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
+    let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+    
+    var rArray: [Float] = []
+    var gArray: [Float] = []
+    var bArray: [Float] = []
+    var aArray: [Float] = []
+
+    var width: CGFloat = 0
+    var height: CGFloat = 0
+    
+    self.representations.forEach { rep in
+      width = max(CGFloat(rep.pixelsWide), width)
+      height = max(CGFloat(rep.pixelsHigh), height)
+    }
+    
+    for y in 0..<Int(height) {
+      for x in 0..<Int(width) {
+        let pos = CGPoint(x: x, y: y)
+        
+        let pixelInfo: Int = ((Int(width) * Int(pos.y) * 4) + Int(pos.x) * 4)
+        
+        var r = Float(data[pixelInfo])
+        var g = Float(data[pixelInfo + 1])
+        var b = Float(data[pixelInfo + 2])
+        var a = Float(data[pixelInfo + 3])
+
+        if zeroCenter {
+          r = (r - 127.5) / 127.5
+          g = (g - 127.5) / 127.5
+          b = (b - 127.5) / 127.5
+          a = (a - 127.5) / 127.5
+        } else {
+          r = r / 255.0
+          g = g / 255.0
+          b = b / 255.0
+          a = a / 255.0
+        }
+        
+        rArray.append(r)
+        gArray.append(g)
+        bArray.append(b)
+        aArray.append(a)
+      }
+    }
+    
+    let rawPixels = [rArray.reshape(columns: Int(width)),
+                     gArray.reshape(columns: Int(width)),
+                     bArray.reshape(columns: Int(width)),
+                     aArray.reshape(columns: Int(width))]
+    
+    return Tensor(rawPixels)
+  }
+  
+  
   func asSquareRGBTensor(zeroCenter: Bool = false) -> Tensor {
     guard let pixelData = self.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
@@ -53,8 +109,8 @@ public extension NSImage {
         
         if zeroCenter {
           r = (r - 127.5) / 127.5
-          g = (r - 127.5) / 127.5
-          b = (r - 127.5) / 127.5
+          g = (g - 127.5) / 127.5
+          b = (b - 127.5) / 127.5
         } else {
           r = r / 255.0
           g = g / 255.0
