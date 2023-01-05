@@ -25,8 +25,48 @@ public extension NSImage {
     var b: UInt8
   }
   
-  func asSquareRGBATensor(zeroCenter: Bool = false) -> Tensor {
-    guard let pixelData = self.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
+  func asGrayScaleTensor(zeroCenter: Bool = false) -> Tensor {
+    guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
+
+    let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+    
+    var width: CGFloat = 0
+    var height: CGFloat = 0
+    
+    representations.forEach { rep in
+      width = max(CGFloat(rep.pixelsWide), width)
+      height = max(CGFloat(rep.pixelsHigh), height)
+    }
+    
+    var grayArray: [Float] = []
+
+    for y in 0..<Int(height) {
+      for x in 0..<Int(width) {
+        let pos = CGPoint(x: x, y: y)
+        
+        let pixelInfo: Int = ((Int(width) * Int(pos.y) * 4) + Int(pos.x) * 4)
+        
+        let r = Float(data[pixelInfo])
+        let g = Float(data[pixelInfo + 1])
+        let b = Float(data[pixelInfo + 2])
+        
+        var gray = (r + g + b) / 3
+
+        if zeroCenter {
+          gray = (gray - 127.5) / 127.5
+        } else {
+          gray = gray / 255.0
+        }
+        
+        grayArray.append(gray)
+      }
+    }
+    
+    return Tensor([grayArray.reshape(columns: Int(width))])
+  }
+  
+  func asRGBATensor(zeroCenter: Bool = false) -> Tensor {
+    guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
     var rArray: [Float] = []
@@ -37,7 +77,7 @@ public extension NSImage {
     var width: CGFloat = 0
     var height: CGFloat = 0
     
-    self.representations.forEach { rep in
+    representations.forEach { rep in
       width = max(CGFloat(rep.pixelsWide), width)
       height = max(CGFloat(rep.pixelsHigh), height)
     }
@@ -81,8 +121,8 @@ public extension NSImage {
   }
   
   
-  func asSquareRGBTensor(zeroCenter: Bool = false) -> Tensor {
-    guard let pixelData = self.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
+  func asRGBTensor(zeroCenter: Bool = false) -> Tensor {
+    guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
     var rArray: [Float] = []
@@ -92,7 +132,7 @@ public extension NSImage {
     var width: CGFloat = 0
     var height: CGFloat = 0
     
-    self.representations.forEach { rep in
+    representations.forEach { rep in
       width = max(CGFloat(rep.pixelsWide), width)
       height = max(CGFloat(rep.pixelsHigh), height)
     }

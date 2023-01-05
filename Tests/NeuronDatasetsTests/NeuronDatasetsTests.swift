@@ -12,6 +12,21 @@ extension XCTestCase {
 }
 
 final class NeuronDatasetsTests: XCTestCase {
+  
+  func testImageDatasetDepthCheck() {
+    ImageDataset.ImageDepth.allCases.forEach { depth in
+      let imageSize = CGSize(width: 20, height: 20)
+      let dataset = ImageDataset(imagesDirectory: URL(string: "https://images.com")!,
+                                 imageSize: imageSize,
+                                 label: [1.0],
+                                 imageDepth: depth)
+      
+      XCTAssertEqual(dataset.unitDataSize, TensorSize(rows: Int(imageSize.height),
+                                                      columns: Int(imageSize.width),
+                                                      depth: depth.expectedDepth))
+    }
+  }
+
   func testMNISTClassifier() async {
     guard isGithubCI == false else {
       XCTAssert(true)
@@ -60,8 +75,6 @@ final class NeuronDatasetsTests: XCTestCase {
     optim.metricsReporter?.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
-      //let valLoss = metrics[.valLoss] ?? 0
-      
       print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
@@ -72,27 +85,7 @@ final class NeuronDatasetsTests: XCTestCase {
                                 log: false)
     
     let data = await MNIST().build()
-    
-    /*
-     for _ in 0..<3 {
-     if let random = data.val.randomElement() {
-     let label = random.label
-     let data = random.data
-     
-     let labelArray: [Float] = label.value.flatten()
-     let labelMax = labelArray.indexOfMax.0
-     
-     let out = classifier.feed([data])
-     if let first = out.first {
-     let firstFlat: [Float] = first.value.flatten()
-     let firstMax = firstFlat.indexOfMax.0
-     
-     print("out: ", firstMax, "- \(firstFlat.indexOfMax.1 * 100)%", "---> expected: ", labelMax, "- \(labelArray.indexOfMax.1 * 100)%")
-     XCTAssert(firstMax == labelMax)
-     }
-     }
-     }
-     */
+  
     classifier.fit(data.training, data.val)
   }
 }

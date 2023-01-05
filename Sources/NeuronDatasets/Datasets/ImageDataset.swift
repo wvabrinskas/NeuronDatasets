@@ -18,6 +18,32 @@ import UIKit
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
 public class ImageDataset: Dataset, Logger {
+  public enum ImageDatasetError: Error, LocalizedError {
+    case imageDepthError
+    
+    public var errorDescription: String? {
+      switch self {
+      case .imageDepthError:
+        return NSLocalizedString("Expected image depth should be equal to the image size depth", comment: "")
+      }
+    }
+  }
+  
+  public enum ImageDepth: CaseIterable {
+    case rgb, rgba, grayScale
+    
+    var expectedDepth: Int {
+      switch self {
+      case .rgb:
+        return 3
+      case .rgba:
+        return 4
+      case .grayScale:
+        return 1
+      }
+    }
+  }
+  
   public var logLevel: LogLevel = .low
   public var unitDataSize: Neuron.TensorSize
   public var data: DatasetData = ([], []) {
@@ -34,27 +60,34 @@ public class ImageDataset: Dataset, Logger {
   private let zeroCentered: Bool
   private let maxCount: Int
   private let validationSplitPercent: Float
+  private let imageDepth: ImageDepth
   
-  /// Initializes an RGB ImageDataset. The data will be an array of Tensor's of depth 3. One for each channel, excluding Alpha
+  /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
   ///   - imageSize: The expected size of the images
   ///   - label: The label to apply to every image.
+  ///   - imageDepth: ImageDepth that describes the expected depth of the images.
   ///   - maxCount: Max count to add to the dataset. Could be useful to save memory. Setting it to 0 will use the whole dataset.
   ///   - validationSplitPercent: Number between 0 and 1. The lower the number the more likely it is the image will be added to the training dataset otherwise it'll be added to the validation dataset.
   ///   - zeroCentered: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
   public init(imagesDirectory: URL,
-              imageSize: Neuron.TensorSize,
+              imageSize: CGSize,
               label: [Float],
+              imageDepth: ImageDepth,
               maxCount: Int = 0,
               validationSplitPercent: Float = 0,
               zeroCentered: Bool = false) {
-    self.unitDataSize = imageSize
+
+    self.unitDataSize = TensorSize(rows: Int(imageSize.width),
+                                   columns: Int(imageSize.height),
+                                   depth: imageDepth.expectedDepth)
     self.imagesDirectory = imagesDirectory.path
     self.overrideLabel = label
     self.zeroCentered = zeroCentered
     self.maxCount = maxCount
     self.validationSplitPercent = validationSplitPercent
+    self.imageDepth = imageDepth
   }
   
   public func build() async -> DatasetData {
@@ -76,11 +109,25 @@ public class ImageDataset: Dataset, Logger {
     
     #if os(macOS)
     if let image = NSImage(contentsOf: rawUrl) {
-      return image.asSquareRGBTensor(zeroCenter: zeroCentered)
+      switch imageDepth {
+      case .rgb:
+        return image.asRGBTensor(zeroCenter: zeroCentered)
+      case .rgba:
+        return image.asRGBATensor(zeroCenter: zeroCentered)
+      case .grayScale:
+        return image.asGrayScaleTensor(zeroCenter: zeroCentered)
+      }
     }
     #elseif os(iOS)
     if let image = UIImage(contentsOfFile: url) {
-      return image.asSquareRGBTensor(zeroCenter: zeroCentered)
+      switch imageDepth {
+      case .rgb:
+        return image.asRGBTensor(zeroCenter: zeroCentered)
+      case .rgba:
+        return image.asRGBATensor(zeroCenter: zeroCentered)
+      case .grayScale:
+        return image.asGrayScaleTensor(zeroCenter: zeroCentered)
+      }
     }
     #endif
     

@@ -27,7 +27,39 @@ public extension UIImage {
     var b: UInt8
   }
   
-  func asSquareRGBATensor(zeroCenter: Bool = false) -> Tensor {
+  func asGrayScaleTensor(zeroCenter: Bool = false) -> Tensor {
+    guard let pixelData = self.cgImage?.dataProvider?.data else { return Tensor() }
+    
+    let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+    
+    var grayArray: [Float] = []
+
+    for y in 0..<Int(self.size.height) {
+      for x in 0..<Int(self.size.width) {
+        let pos = CGPoint(x: x, y: y)
+        
+        let pixelInfo: Int = ((Int(self.size.width) * Int(pos.y) * 4) + Int(pos.x) * 4)
+        
+        let r = Float(data[pixelInfo])
+        let g = Float(data[pixelInfo + 1])
+        let b = Float(data[pixelInfo + 2])
+        
+        var gray = (r + g + b) / 3
+
+        if zeroCenter {
+          gray = (gray - 127.5) / 127.5
+        } else {
+          gray = gray / 255.0
+        }
+        
+        grayArray.append(gray)
+      }
+    }
+    
+    return Tensor([grayArray.reshape(columns: Int(self.size.width))])
+  }
+  
+  func asRGBATensor(zeroCenter: Bool = false) -> Tensor {
     guard let pixelData = self.cgImage?.dataProvider?.data else { return Tensor() }
     
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
@@ -73,7 +105,7 @@ public extension UIImage {
                    aArray.reshape(columns: Int(self.size.width))])
   }
   
-  func asSquareRGBTensor(zeroCenter: Bool = false) -> Tensor {
+  func asRGBTensor(zeroCenter: Bool = false) -> Tensor {
     guard let pixelData = self.cgImage?.dataProvider?.data else { return Tensor() }
     
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
