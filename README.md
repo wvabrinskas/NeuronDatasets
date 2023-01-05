@@ -16,13 +16,15 @@ Create an `ImageDataset` object
 
 ```
   let dataset = ImageDataset(imagesDirectory: URL(string: "/Users/williamvabrinskas/Desktop/ImageDataset")!,
-                             imageSize: .init(rows: 63, columns: 63, depth: 3),
+                             imageSize: CGSize(width: 64, height: 64),
                              label: [1.0],
+                             imageDepth: .rgb,
                              maxCount: 10000)
 ```
 - `imagesDirectory`: The directory of the images to load. All images should be the same size.
 - `imageSize`: The expected size of the images
 - `label`: The label to apply to every image.
+- `imageDepth`: ImageDepth that describes the expected depth of the images.
 - `maxCount`: Max count to add to the dataset. Could be useful to save memory. Setting it to 0 will use the whole dataset.
 - `validationSplitPercent`: Number between 0 and 1. The lower the number the more likely it is the image will be added to the training dataset otherwise it'll be added to the validation dataset.
 - `zeroCentered`: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
