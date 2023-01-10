@@ -25,6 +25,7 @@ let package = Package(
         .target(
             name: "NeuronDatasets",
             dependencies: ["Neuron"],
+            exclude: [ "bin" ],
             resources: [ .process("Resources") ]),
         .testTarget(
             name: "NeuronDatasetsTests",
