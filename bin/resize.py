@@ -6,11 +6,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("path", help="path to directory containing images to resize")
 parser.add_argument("width", type=int, help="width of resized image")
 parser.add_argument("height", type=int, help="height of resized image")
+parser.add_argument("verbose", type=bool, help="verbose mode")
 
 args = parser.parse_args()
 path = args.path
 width = args.width
 height = args.height
+verbose = args.verbose
 
 if path == None or width == None or height == None:
     exit(1)
@@ -21,7 +23,8 @@ def resize():
     for item in dirs:
         if os.path.isfile(path+item):
             im = Image.open(path+item)
-            print(im)
+            if verbose:
+                print(im)
             imResize = im.resize((width,height), Image.ANTIALIAS)
             imResize.save(path + item)
 
