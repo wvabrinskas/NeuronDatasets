@@ -30,3 +30,9 @@ Create an `ImageDataset` object
 - `zeroCentered`: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
 
 To build the dataset just call `.build()` on the dataset object.
+
+## Utilities
+In the `bin` folder there are some helpful scripts to help format image databases. 
+| Script | Description | Usage |
+| ------ | ----------- | ----- | 
+| resize.py | will automatically resize images in a given directory to a specified size | `python3 ./bin/resize.py --width 64 --height 64 --path PATH_TO_IMAGES_DIR` |
