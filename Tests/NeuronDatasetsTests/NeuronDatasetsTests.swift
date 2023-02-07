@@ -63,6 +63,7 @@ final class NeuronDatasetsTests: XCTestCase {
     }
     
     let optim = Adam(network, learningRate: 0.0001, l2Normalize: false)
+    optim.device = GPU()
     
     let reporter = MetricsReporter(frequency: 1,
                                    metricsToGather: [.loss,
@@ -80,8 +81,8 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let classifier = Classifier(optimizer: optim,
                                 epochs: 10,
-                                batchSize: 32,
-                                threadWorkers: 8,
+                                batchSize: 16,
+                                threadWorkers: 16,
                                 log: false)
     
     let data = await MNIST().build()
