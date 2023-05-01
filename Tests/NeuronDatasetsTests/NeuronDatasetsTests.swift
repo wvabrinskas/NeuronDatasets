@@ -33,15 +33,18 @@ final class NeuronDatasetsTests: XCTestCase {
       return
     }
     
+    let dataset = MNIST()
     let initializer: InitializerType = .heNormal
     
     let flatten = Flatten()
-    flatten.inputSize = TensorSize(array: [28, 28, 1])
+    flatten.inputSize = TensorSize(rows: dataset.unitDataSize.rows,
+                                   columns: dataset.unitDataSize.columns,
+                                   depth: dataset.unitDataSize.depth)
     
     let network = Sequential {
       [
         Conv2d(filterCount: 16,
-               inputSize: TensorSize(array: [28,28,1]),
+               inputSize: flatten.inputSize,
                padding: .same,
                initializer: initializer),
         BatchNormalize(),
@@ -63,7 +66,7 @@ final class NeuronDatasetsTests: XCTestCase {
     }
     
     let optim = Adam(network, learningRate: 0.0001, l2Normalize: false)
-    optim.device = GPU()
+    //optim.device = GPU()
     
     let reporter = MetricsReporter(frequency: 1,
                                    metricsToGather: [.loss,
@@ -85,7 +88,7 @@ final class NeuronDatasetsTests: XCTestCase {
                                 threadWorkers: 16,
                                 log: false)
     
-    let data = await MNIST().build()
+    let data = await dataset.build()
   
     classifier.fit(data.training, data.val)
   }
