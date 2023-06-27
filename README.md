@@ -31,6 +31,50 @@ Create an `ImageDataset` object
 
 To build the dataset just call `.build()` on the dataset object.
 
+## Importing a CSV dataset
+You can import a CSV dataset from a directory to create a Dataset that Neuron can use using `CSVDataset`. 
+
+```
+// specifies the headers in the CSV files
+enum TestHeaders: String, CSVSupporting {
+  case id = "Id"
+  case name = "Name"
+  
+  func order() -> [TestHeaders] {
+    Self.allCases
+  }
+  
+  func maxLengthOfItem() -> Int {
+    switch self {
+    case .name:
+      return 10
+    default:
+      return 1
+    }
+  }
+}
+
+let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv") // test csv provided in the bundle
+
+guard let path, let pathUrl = URL(string: path) else { return }
+
+let splitPercentage: Float = 0.2
+
+let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                              headerToFetch: .name,
+                                              validationSplitPercentage: splitPercentage,
+                                              parameters: .init(oneHot: true))
+
+let build = await csvDataset.build()
+
+```
+
+- `csvUrl`: the url of the CSV file
+- `headerToFetch`: the K: Header value you want to fetch
+- `maxCount`: the max number of objects you want. 0 = unlimited
+- `validationSplitPercentage`: The validation split percentage to generate. min: 0.1, max: 0.9
+- `overrideLabel`: the label to apply to each object. Otherwise the label will be set to the data. eg. `data: [0,1,0], label: [0,1,0]`
+- `parameters`: The configuration parameters
 ## Utilities
 In the `bin` folder there are some helpful scripts to help format image databases. 
 | Script | Description | Usage |
