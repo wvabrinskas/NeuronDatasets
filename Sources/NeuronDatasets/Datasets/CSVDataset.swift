@@ -16,6 +16,10 @@ public protocol CSVSupporting: RawRepresentable<String>, CaseIterable {
 
 public typealias Header = Hashable & CSVSupporting
 
+
+/// Creates a dataset from a CSV file.
+/// Set the K typealias to an `enum` that conforms to `Header`.
+/// This typealias will be used to get the column of data you want from the CSV
 public final class CSVDataset<K: Header>: Dataset, Logger {
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
@@ -68,6 +72,14 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
     case header
   }
   
+  /// Default initializer
+  /// - Parameters:
+  ///   - csvUrl: the url of the CSV file
+  ///   - headerToFetch: the K: Header value you want to fetch
+  ///   - maxCount: the max number of objects you want. 0 = unlimited
+  ///   - validationSplitPercentage: The validation split percentage to generate. min: 0.1, max: 0.9
+  ///   - overrideLabel: the label to apply to each object. Otherwise the label will be set to the data. eg. `data: [0,1,0], label: [0,1,0]`
+  ///   - parameters: The configuration parameters
   public init(csvUrl: URL,
               headerToFetch: K,
               maxCount: Int = 0, // 0 is all
@@ -83,69 +95,84 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
   }
   
   public func build() async -> DatasetData {
-    get()
+    do {
+      try await get()
+    } catch {
+      print(error.localizedDescription)
+    }
     return data
   }
   
   public func build() {
-    get()
+    Task {
+      do {
+        try await get()
+      } catch {
+        print(error.localizedDescription)
+      }
+    }
   }
   
   // MARK: Private
-  private func get() {
-    do {
-      try fetchRawCSV()
-      let csvData = try getCSVData()
-      
-      let trainingSplit = Int(floor(Float(csvData.count) * (1 - validationSplitPercentage)))
-      let overrideLabelMap = overrideLabel.isEmpty ? nil : overrideLabel.map { Tensor.Scalar($0) }
-      
-      let csvTrainingData = Array(csvData[..<trainingSplit]).map { DatasetModel(data: Tensor($0),
-                                                                                label: Tensor($0)) }
-      
-      let validationTrainingData = Array(csvData[trainingSplit...]).map {DatasetModel(data: Tensor($0),
-                                                                                      label: Tensor($0))}
-      
-      self.data = (csvTrainingData, validationTrainingData)
-      complete = true
-      
-    } catch {
-      print(error.localizedDescription)
-    }
+  private func get() async throws {
+    try fetchRawCSV()
+    let csvData = try await getCSVData()
+    
+    let trainingSplit = Int(floor(Float(csvData.count) * (1 - validationSplitPercentage)))
+    let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
+    
+    let csvTrainingData = Array(csvData[..<trainingSplit]).map { DatasetModel(data: Tensor($0),
+                                                                              label: overrideLabelMap ?? Tensor($0)) }
+    
+    let validationTrainingData = Array(csvData[trainingSplit...]).map {DatasetModel(data: Tensor($0),
+                                                                                    label: overrideLabelMap ?? Tensor($0))}
+    
+    self.data = (csvTrainingData, validationTrainingData)
+    complete = true
   }
   
-  private func getCSVData() throws -> [[[Tensor.Scalar]]] {
-    var parsedCSV: [String]? = cache.object(forKey: CacheKey.csv.rawValue) as? [String]
-    
-    if parsedCSV == nil {
-      parsedCSV = try fetchRawCSV()
-    }
-    
-    guard var parsedCSV,
-          let headers = parsedCSV[safe: 0]?.components(separatedBy: ",") else {
-      throw CSVDatasetError.headerMissing
-    }
-    
-    let kHeaders = headers.map { K(rawValue: $0) }.compactMap { $0 }
-    
-    // drop headers
-    let range: Range<Int> = maxCount <= 0 ? 0..<(parsedCSV.count - 1) : 0..<maxCount // - 1 because we removed the header
-    parsedCSV = Array(Array(parsedCSV.dropFirst())[range])
-    
-    let parsedByHeader = parsedCSV.map { $0.components(separatedBy: ",") }
-                                  .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0] }
-    
+  private func getCSVData() async throws -> [[[Tensor.Scalar]]] {
+    return try await withCheckedThrowingContinuation { continuation in
+      Task {
+        var parsedCSV: [String]? = cache.object(forKey: CacheKey.csv.rawValue) as? [String]
+        
+        if parsedCSV == nil {
+          do {
+            parsedCSV = try fetchRawCSV()
+          } catch {
+            continuation.resume(throwing: error)
+          }
+        }
+        
+        guard var parsedCSV,
+              let headers = parsedCSV[safe: 0]?.components(separatedBy: ",") else {
+          continuation.resume(throwing: CSVDatasetError.headerMissing)
+          throw CSVDatasetError.headerMissing
+        }
+        
+        let kHeaders = headers.map { K(rawValue: $0) }.compactMap { $0 }
+        
+        // drop headers
+        let range: Range<Int> = maxCount <= 0 ? 0..<(parsedCSV.count - 1) : 0..<maxCount // - 1 because we removed the header
+        parsedCSV = Array(Array(parsedCSV.dropFirst())[range])
+        
+        let parsedByHeader = parsedCSV.map { $0.components(separatedBy: ",") }
+                                      .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0] }
+        
 
-    let vectorized = parsedByHeader.map { vectorizer.vectorize($0.fill(with: ".",
-                                                                       max: headerToFetch.maxLengthOfItem()).characters).map { $0.asTensorScalar } }
-    
-    if parameters.oneHot == false {
-      return vectorized.map { [$0] }
-    } else {
-      let oneHotted = parsedByHeader.map { vectorizer.oneHot($0.fill(with: ".",
-                                                                     max: headerToFetch.maxLengthOfItem()).characters)}
-      
-      return oneHotted
+        let vectorized = parsedByHeader.map { vectorizer.vectorize($0.fill(with: ".",
+                                                                           max: headerToFetch.maxLengthOfItem()).characters).map { $0.asTensorScalar } }
+        
+        if parameters.oneHot == false {
+          continuation.resume(returning: vectorized.map { [$0] })
+          
+        } else {
+          let oneHotted = parsedByHeader.map { vectorizer.oneHot($0.fill(with: ".",
+                                                                         max: headerToFetch.maxLengthOfItem()).characters)}
+          
+          continuation.resume(returning: oneHotted)
+        }
+      }
     }
   }
   
