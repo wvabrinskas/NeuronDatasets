@@ -13,6 +13,46 @@ extension XCTestCase {
 
 final class NeuronDatasetsTests: XCTestCase {
   
+  func testCSVDataset() async {
+    enum TestHeaders: String, CSVSupporting {
+      case id = "Id"
+      case name = "Name"
+      
+      func order() -> [TestHeaders] {
+        Self.allCases
+      }
+      
+      func maxLengthOfItem() -> Int {
+        switch self {
+        case .name:
+          return 10
+        default:
+          return 1
+        }
+      }
+    }
+    
+    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
+    
+    XCTAssertNotNil(path)
+    guard let path, let pathUrl = URL(string: path) else { return }
+    
+    let splitPercentage: Float = 0.2
+    
+    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                  headerToFetch: .name,
+                                                  validationSplitPercentage: splitPercentage,
+                                                  parameters: .init(oneHot: true))
+    
+    let build = await csvDataset.build()
+    
+    let trainingCount = Int(floor(Float(40 - 1) * Float(1 - splitPercentage)))
+    let valCount = (40 - 1) - trainingCount
+
+    XCTAssertEqual(build.training.count, trainingCount)
+    XCTAssertEqual(build.val.count, valCount)
+  }
+  
   func testImageDatasetDepthCheck() {
     ImageDataset.ImageDepth.allCases.forEach { depth in
       let imageSize = CGSize(width: 20, height: 20)
