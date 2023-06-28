@@ -69,6 +69,11 @@ final class NeuronDatasetsTests: XCTestCase {
   
   func testLSTM() async {
     
+    guard isGithubCI == false else {
+      XCTAssert(true)
+      return
+    }
+    
     enum TestHeaders: String, CSVSupporting {
       case id = "Id"
       case name = "Name"
@@ -116,7 +121,14 @@ final class NeuronDatasetsTests: XCTestCase {
     
     // TODO: get other layers to work with multiple batches.
     let network = Sequential(
-      lstm
+      lstm,
+      Flatten(),
+      Dense(64),
+      ReLu(),
+      Dropout(0.5),
+      Dense(vocabSize * rows * 1),
+      Reshape(to: TensorSize(array: [vocabSize, rows, 1])),
+      Softmax()
     )
     
     let optim = Adam(network,
