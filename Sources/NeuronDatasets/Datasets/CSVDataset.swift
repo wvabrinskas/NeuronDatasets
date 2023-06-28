@@ -20,7 +20,7 @@ public typealias Header = Hashable & CSVSupporting
 /// Creates a dataset from a CSV file.
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
-public final class CSVDataset<K: Header>: Dataset, Logger {
+public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
     case headerMappingError
@@ -113,6 +113,19 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
     }
   }
   
+  public func getWord(for data: Tensor) -> [String] {
+    if parameters.oneHot == false {
+      let intArray = data.value.map { $0.map { $0.map { Int($0) }}}
+      if let int = intArray[safe: 0]?[safe: 0] {
+        return vectorizer.unvectorize(int)
+      }
+      
+      return [""]
+    } else {
+      return vectorizer.unvectorizeOneHot(data)
+    }
+  }
+  
   // MARK: Private
   private func get() async throws {
     try fetchRawCSV()
@@ -121,17 +134,17 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
     let trainingSplit = Int(floor(Float(csvData.count) * (1 - validationSplitPercentage)))
     let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
     
-    let csvTrainingData = Array(csvData[..<trainingSplit]).map { DatasetModel(data: Tensor($0),
-                                                                              label: overrideLabelMap ?? Tensor($0)) }
+    let csvTrainingData = Array(csvData[..<trainingSplit]).map { DatasetModel(data: $0,
+                                                                              label: overrideLabelMap ?? $0) }
     
-    let validationTrainingData = Array(csvData[trainingSplit...]).map {DatasetModel(data: Tensor($0),
-                                                                                    label: overrideLabelMap ?? Tensor($0))}
+    let validationTrainingData = Array(csvData[trainingSplit...]).map {DatasetModel(data: $0,
+                                                                                    label: overrideLabelMap ?? $0)}
     
     self.data = (csvTrainingData, validationTrainingData)
     complete = true
   }
   
-  private func getCSVData() async throws -> [[[Tensor.Scalar]]] {
+  private func getCSVData() async throws -> [Tensor] {
     return try await withCheckedThrowingContinuation { continuation in
       Task {
         var parsedCSV: [String]? = cache.object(forKey: CacheKey.csv.rawValue) as? [String]
@@ -164,7 +177,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
                                                                            max: headerToFetch.maxLengthOfItem()).characters).map { $0.asTensorScalar } }
         
         if parameters.oneHot == false {
-          continuation.resume(returning: vectorized.map { [$0] })
+          continuation.resume(returning: [Tensor(vectorized.map { [$0] })])
           
         } else {
           let oneHotted = parsedByHeader.map { vectorizer.oneHot($0.fill(with: ".",
@@ -191,3 +204,5 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
   }
 
 }
+
+
