@@ -154,7 +154,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger {
         
         // drop headers
         let range: Range<Int> = maxCount <= 0 ? 0..<(parsedCSV.count - 1) : 0..<maxCount // - 1 because we removed the header
-        parsedCSV = Array(Array(parsedCSV.dropFirst())[range])
+        parsedCSV = Array(Array(parsedCSV.dropFirst())[range]).filter({ $0.isEmpty == false })
         
         let parsedByHeader = parsedCSV.map { $0.components(separatedBy: ",") }
                                       .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0] }

@@ -46,8 +46,8 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let build = await csvDataset.build()
     
-    let trainingCount = Int(floor(Float(40 - 1) * Float(1 - splitPercentage)))
-    let valCount = (40 - 1) - trainingCount
+    let trainingCount = Int(floor(Float(970 - 1) * Float(1 - splitPercentage)))
+    let valCount = (970 - 1) - trainingCount
 
     XCTAssertEqual(build.training.count, trainingCount)
     XCTAssertEqual(build.val.count, valCount)
@@ -65,6 +65,86 @@ final class NeuronDatasetsTests: XCTestCase {
                                                       columns: Int(imageSize.width),
                                                       depth: depth.expectedDepth))
     }
+  }
+  
+  func testLSTM() async {
+    
+    enum TestHeaders: String, CSVSupporting {
+      case id = "Id"
+      case name = "Name"
+      
+      func order() -> [TestHeaders] {
+        Self.allCases
+      }
+      
+      func maxLengthOfItem() -> Int {
+        switch self {
+        case .name:
+          return 10
+        default:
+          return 1
+        }
+      }
+    }
+    
+    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
+    
+    XCTAssertNotNil(path)
+    guard let path, let pathUrl = URL(string: path) else { return }
+    
+    let splitPercentage: Float = 0.2
+    
+    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                  headerToFetch: .name,
+                                                  validationSplitPercentage: splitPercentage,
+                                                  parameters: .init(oneHot: true))
+    
+    let build = await csvDataset.build()
+    
+    let vocabSize = build.training.first!.data.shape[0]
+    let rows = build.training.first!.data.shape[1]
+
+    let inputUnits = 100
+    let hiddenUnits = 256
+    
+    let lstm = LSTM(inputSize: TensorSize(rows: rows,
+                                          columns: inputUnits,
+                                          depth: 1),
+                    initializer: .heNormal,
+                    hiddenUnits: hiddenUnits,
+                    vocabSize: vocabSize)
+    
+    // TODO: get other layers to work with multiple batches.
+    let network = Sequential(
+      lstm
+    )
+    
+    let optim = Adam(network,
+                     learningRate: 0.005,
+                     l2Normalize: false)
+    
+    let reporter = MetricsReporter(frequency: 1,
+                                   metricsToGather: [.loss,
+                                                     .accuracy,
+                                                     .valAccuracy,
+                                                     .valLoss])
+    
+    optim.metricsReporter = reporter
+    
+    optim.metricsReporter?.receive = { metrics in
+      let accuracy = metrics[.accuracy] ?? 0
+      let loss = metrics[.loss] ?? 0
+      print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
+    }
+    
+    let classifier = Classifier(optimizer: optim,
+                                epochs: 10,
+                                batchSize: 16,
+                                threadWorkers: 8,
+                                log: false)
+    
+    // TODO: Handle validation data for LSTM
+    classifier.fit(build.training, [])
   }
 
   func testMNISTClassifier() async {
