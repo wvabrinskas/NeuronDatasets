@@ -160,7 +160,7 @@ final class NeuronDatasetsTests: XCTestCase {
                                                                                       epochs: 30,
                                                                                       accuracyThreshold: 0.8,
                                                                                       threadWorkers: 8),
-                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.005,
+                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.002,
                                                                metricsReporter: reporter),
                   lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
                                                         inputUnits: 100)) /*{
@@ -174,9 +174,9 @@ final class NeuronDatasetsTests: XCTestCase {
     }*/
     
     reporter.receive = { metrics in
-      let accuracy = metrics[.accuracy] ?? 0
-      let loss = metrics[.loss] ?? 0
-      print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
+//      let accuracy = metrics[.accuracy] ?? 0
+//      let loss = metrics[.loss] ?? 0
+//      print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
     rnn.onEpochCompleted = {
