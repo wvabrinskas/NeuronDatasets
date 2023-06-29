@@ -134,11 +134,34 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
     let trainingSplit = Int(floor(Float(csvData.count) * (1 - validationSplitPercentage)))
     let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
     
-    let csvTrainingData = Array(csvData[..<trainingSplit]).map { DatasetModel(data: $0,
-                                                                              label: overrideLabelMap ?? $0) }
+    let csvTrainingData = Array(csvData[..<trainingSplit]).map { d in
+      let data = d
+      var label = d
+      
+      let labelRaw = Array(label.value.dropFirst())
+      
+      label = Tensor(labelRaw)
+      
+      if labelRaw.count < headerToFetch.maxLengthOfItem() {
+        let delimiter = vectorizer.oneHot(["."])
+        label = label.concat(delimiter, axis: 2)
+      }
+      
+      return DatasetModel(data: data, label: overrideLabelMap ?? label)
+    }
     
-    let validationTrainingData = Array(csvData[trainingSplit...]).map {DatasetModel(data: $0,
-                                                                                    label: overrideLabelMap ?? $0)}
+    let validationTrainingData = Array(csvData[trainingSplit...]).map { d in
+      let data = d
+      var label = d
+      
+      let labelRaw = label.value.dropFirst()
+      if labelRaw.count < headerToFetch.maxLengthOfItem() {
+        let delimiter = vectorizer.oneHot(["."])
+        label = label.concat(delimiter, axis: 2)
+      }
+      
+      return DatasetModel(data: data, label: overrideLabelMap ?? label)
+    }
     
     self.data = (csvTrainingData, validationTrainingData)
     complete = true

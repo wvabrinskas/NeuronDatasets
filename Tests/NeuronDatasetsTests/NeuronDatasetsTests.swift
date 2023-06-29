@@ -51,6 +51,12 @@ final class NeuronDatasetsTests: XCTestCase {
     let unvectorized = csvDataset.getWord(for: name).filter { $0 != "." }.joined()
     
     XCTAssertEqual(unvectorized, "mary")
+    
+    let label = build.training[0].label
+    
+    let unvectorizedLabel = csvDataset.getWord(for: label).filter { $0 != "." }.joined()
+    
+    XCTAssertEqual(unvectorizedLabel, "ary")
   }
   
   func testCSVDataset() async {
