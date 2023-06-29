@@ -158,7 +158,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let rnn = RNN(dataset: csvDataset, classifierParameters: RNN.ClassifierParameters(batchSize: 16,
                                                                                       epochs: 30,
-                                                                                      accuracyThreshold: 0.1,
+                                                                                      accuracyThreshold: 0.8,
                                                                                       threadWorkers: 8),
                   optimizerParameters: RNN.OptimizerParameters(learningRate: 0.005,
                                                                metricsReporter: reporter),
