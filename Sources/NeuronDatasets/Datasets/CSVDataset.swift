@@ -66,6 +66,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   private let cache: NSCache<NSString, NSArray> = .init()
   private var vectorizedAlready: [K: Bool] = [:]
   private let validationSplitPercentage: Float
+  private let labelOffset: Int
   
   private enum CacheKey: NSString {
     case csv
@@ -76,6 +77,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   /// - Parameters:
   ///   - csvUrl: the url of the CSV file
   ///   - headerToFetch: the K: Header value you want to fetch
+  ///   - labelOffset: The amount to shift the label left by. eg. "mary." -> "ary..". Default: `1`. Useful in LSTM / RNN to predict next in sequence
   ///   - maxCount: the max number of objects you want. 0 = unlimited
   ///   - validationSplitPercentage: The validation split percentage to generate. min: 0.1, max: 0.9
   ///   - overrideLabel: the label to apply to each object. Otherwise the label will be set to the data. eg. `data: [0,1,0], label: [0,1,0]`
@@ -83,6 +85,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   public init(csvUrl: URL,
               headerToFetch: K,
               maxCount: Int = 0, // 0 is all
+              labelOffset: Int = 1,
               validationSplitPercentage: Float, // max is 0.9 and min is 0.1
               overrideLabel: [Float]? = nil,
               parameters: Parameters = .init()) {
@@ -92,6 +95,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
     self.headerToFetch = headerToFetch
     self.maxCount = maxCount
     self.validationSplitPercentage = max(min(0.9, validationSplitPercentage), 0.1)
+    self.labelOffset = labelOffset
   }
   
   public func build() async -> DatasetData {
@@ -138,7 +142,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
       let data = d
       var label = d
       
-      let labelRaw = Array(label.value.dropFirst())
+      let labelRaw = Array(label.value[labelOffset...])
       
       label = Tensor(labelRaw)
       
@@ -154,7 +158,10 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
       let data = d
       var label = d
       
-      let labelRaw = label.value.dropFirst()
+      let labelRaw = Array(label.value[labelOffset...])
+      
+      label = Tensor(labelRaw)
+      
       if labelRaw.count < headerToFetch.maxLengthOfItem() {
         let delimiter = vectorizer.oneHot(["."])
         label = label.concat(delimiter, axis: 2)
