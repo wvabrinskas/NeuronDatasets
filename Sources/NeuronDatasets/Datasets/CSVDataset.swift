@@ -21,6 +21,7 @@ public typealias Header = Hashable & CSVSupporting
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
 public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
+
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
     case headerMappingError
@@ -129,6 +130,11 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
       return vectorizer.unvectorizeOneHot(data)
     }
   }
+  
+  public func oneHot(_ items: [String]) -> Tensor {
+    vectorizer.oneHot(items)
+  }
+  
   
   // MARK: Private
   private func get() async throws {

@@ -156,22 +156,24 @@ final class NeuronDatasetsTests: XCTestCase {
                                                      .valAccuracy,
                                                      .valLoss])
     
-    let rnn = RNN(dataset: csvDataset, classifierParameters: RNN.ClassifierParameters(batchSize: 16,
+    let rnn = RNN(returnSequence: false,
+                  dataset: csvDataset,
+                  classifierParameters: RNN.ClassifierParameters(batchSize: 16,
                                                                                       epochs: 30,
                                                                                       accuracyThreshold: 0.8,
                                                                                       threadWorkers: 8),
                   optimizerParameters: RNN.OptimizerParameters(learningRate: 0.002,
                                                                metricsReporter: reporter),
                   lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
-                                                        inputUnits: 100)) /*{
-      [Flatten(),
+                                                        inputUnits: 100)) {
+      [//Flatten(),
        Dense(64),
        ReLu(),
        Dropout(0.5),
-       Dense(vocabSize * rows * 1),
-       Reshape(to: TensorSize(array: [vocabSize, rows, 1])),
+       Dense(27 * 1),
+       //Reshape(to: TensorSize(array: [vocabSize, rows, 1])),
        Softmax()]
-    }*/
+    }
     
     reporter.receive = { metrics in
 //      let accuracy = metrics[.accuracy] ?? 0
