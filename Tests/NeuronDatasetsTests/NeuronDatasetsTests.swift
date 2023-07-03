@@ -131,26 +131,28 @@ final class NeuronDatasetsTests: XCTestCase {
       func maxLengthOfItem() -> Int {
         switch self {
         case .name:
-          return 10
+          return 15
         default:
           return 1
         }
       }
     }
     
-    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
+    let path = Bundle.module.path(forResource: "HamsterNames", ofType: "csv")
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
     
-    let splitPercentage: Float = 0.2
+    let splitPercentage: Float = 0.1
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .name,
+                                                  labelOffset: 0,
                                                   validationSplitPercentage: splitPercentage,
-                                                  parameters: .init(oneHot: true))
+                                                  parameters: .init(oneHot: true),
+                                                  filter: CharacterSet(charactersIn: "\r"))
     
-    let reporter = MetricsReporter(frequency: 1,
+    let reporter = MetricsReporter(frequency: 32,
                                    metricsToGather: [.loss,
                                                      .accuracy,
                                                      .valAccuracy,
@@ -159,21 +161,25 @@ final class NeuronDatasetsTests: XCTestCase {
     let rnn = RNN(returnSequence: true,
                   dataset: csvDataset,
                   classifierParameters: RNN.ClassifierParameters(batchSize: 16,
-                                                                 epochs: 30,
+                                                                 epochs: 400,
                                                                  accuracyThreshold: 0.8,
                                                                  threadWorkers: 8),
-                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.002,
+                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.001,
                                                                metricsReporter: reporter),
-                  lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
-                                                        inputUnits: 100))// {
-    //      [
-    //       Dense(64),
-    //       ReLu(),
-    //       Dropout(0.5),
-    //       Dense(vocabSize),
-    //       Softmax()]
-    //    }
-    //
+                  lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 64,
+                                                        inputUnits: 50,
+                                                        embeddingInitializer: .xavierNormal,
+                                                        lstmInitializer: .xavierNormal))
+    
+    let predict = false
+    let importTrain = false
+//
+    if predict || importTrain {
+      if let importUrl = Bundle.module.path(forResource: "hamster-7", ofType: "smodel") {
+        await rnn.importFrom(url: URL(string: "file://" + importUrl))
+      }
+    }
+
     reporter.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
@@ -181,16 +187,26 @@ final class NeuronDatasetsTests: XCTestCase {
     }
     
     rnn.onEpochCompleted = {
-      let word = rnn.predict()
-      print(word)
+      print(rnn.export(overrite: true))
+      let word = rnn.predict(count: 10, maxWordLength: 8, randomizeSelection: true)
+      let nonRandomWord = rnn.predict(count: 10, maxWordLength: 8, randomizeSelection: false)
+
+      print("word", word)
+      print("nonrandom", nonRandomWord)
     }
     
     rnn.onAccuracyReached = {
-      let word = rnn.predict()
+      let word = rnn.predict(count: 10, maxWordLength: 8, randomizeSelection: true)
       print(word)
     }
     
-    await rnn.train()
+    if predict {
+      let word = rnn.predict(count: 20, maxWordLength: 8, randomizeSelection: false)
+      print(word)
+    } else {
+      await rnn.train()
+    }
+
   }
 
   func testMNISTClassifier() async {
