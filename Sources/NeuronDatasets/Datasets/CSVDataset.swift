@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by William Vabrinskas on 6/27/23.
 //
@@ -68,6 +68,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   private var vectorizedAlready: [K: Bool] = [:]
   private let validationSplitPercentage: Float
   private let labelOffset: Int
+  private let filter: CharacterSet?
   
   private enum CacheKey: NSString {
     case csv
@@ -89,7 +90,8 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
               labelOffset: Int = 1,
               validationSplitPercentage: Float, // max is 0.9 and min is 0.1
               overrideLabel: [Float]? = nil,
-              parameters: Parameters = .init()) {
+              parameters: Parameters = .init(),
+              filter: CharacterSet? = nil) {
     self.csvUrl = csvUrl
     self.overrideLabel = overrideLabel ?? []
     self.parameters = parameters
@@ -97,6 +99,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
     self.maxCount = maxCount
     self.validationSplitPercentage = max(min(0.9, validationSplitPercentage), 0.1)
     self.labelOffset = labelOffset
+    self.filter = filter
   }
   
   public func build() async -> DatasetData {
@@ -206,7 +209,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
         parsedCSV = Array(Array(parsedCSV.dropFirst())[range]).filter({ $0.isEmpty == false })
         
         let parsedByHeader = parsedCSV.map { $0.components(separatedBy: ",") }
-                                      .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0] }
+          .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0].trimmingCharactersOptionally(in: filter) }
         
 
         let vectorized = parsedByHeader.map { vectorizer.vectorize($0.fill(with: ".",
@@ -239,6 +242,14 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
     return parsedCSV
   }
 
+}
+
+fileprivate extension String {
+  func trimmingCharactersOptionally(in filter: CharacterSet?) -> String {
+    guard let filter else { return self }
+    
+    return trimmingCharacters(in: filter)
+  }
 }
 
 
