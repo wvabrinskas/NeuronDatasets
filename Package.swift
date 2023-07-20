@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-         .package(url: "https://github.com/wvabrinskas/Neuron.git", from: "2.0.6")
+         .package(url: "https://github.com/wvabrinskas/Neuron.git", from: "2.0.7")
       //.package(url: "../Neuron", branch: "vectorize")
     ],
     targets: [
