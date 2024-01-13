@@ -107,8 +107,16 @@ open class BaseDataset: Dataset {
     // override
   }
   
+  /// Trims the dataset to set amount
   public func trim(to: Int) {
-   
+    guard to > 0 else { return }
+    
+    let training = data.training
+    let validation = data.val
+    
+    guard training.count > to, validation.count > to else { return }
+    
+    data = (Array(training[0..<to]), Array(validation[0..<to]))
   }
 
   public func format(data: Data, offset: Int) -> [UInt8] {
