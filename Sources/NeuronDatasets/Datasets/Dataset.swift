@@ -91,6 +91,7 @@ open class BaseDataset: Dataset {
   }
   
   private var dataPassthroughSubject: PassthroughSubject<DatasetData, Never> = .init()
+  private var trimTo: Int?
   
   public init(unitDataSize: Neuron.TensorSize, 
               overrideLabel: [Float] = []) {
@@ -100,23 +101,19 @@ open class BaseDataset: Dataset {
 
   public func build() async -> DatasetData {
     // override
-    ([],[])
+    trim()
+    return data
   }
   
   public func build() {
     // override
+    trim()
   }
   
   /// Trims the dataset to set amount
   public func trim(to: Int) {
     guard to > 0 else { return }
-    
-    let training = data.training
-    let validation = data.val
-    
-    guard training.count > to, validation.count > to else { return }
-    
-    data = (Array(training[0..<to]), Array(validation[0..<to]))
+    trimTo = to
   }
 
   public func format(data: Data, offset: Int) -> [UInt8] {
@@ -149,5 +146,22 @@ open class BaseDataset: Dataset {
     let bitmap = bitmap(path: path, offset: offset)
     let result = bitmap.map { T($0) / scaleBy }
     return result
+  }
+  
+  private func trim() {
+    guard let trimTo else { return }
+    
+    var training = data.training
+    var validation = data.val
+    
+    if training.count > trimTo {
+      training = Array(training[0..<trimTo])
+    }
+    
+    if validation.count > trimTo {
+      validation = Array(validation[0..<trimTo])
+    }
+                
+    data = (Array(training), Array(validation))
   }
 }

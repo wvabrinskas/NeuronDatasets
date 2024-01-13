@@ -70,7 +70,7 @@ public class QuickDrawDataset: BaseDataset, Logger {
                                                                                                          label: Tensor(label)) }
       
       self.data = (training, validation)
-      return self.data
+      return await super.build()
       
     } catch {
       self.log(type: .error, priority: .alwaysShow, message: "Error getting dataset: \(error.localizedDescription)")

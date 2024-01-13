@@ -157,7 +157,7 @@ public class MNIST: BaseDataset {
       return (trainingDataWithLabels, validationDataWithLabels)
     })
     
-    return data
+    return await super.build()
   }
   
   private func buildLabel(value: Int) -> [Float] {

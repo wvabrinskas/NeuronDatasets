@@ -13,6 +13,23 @@ extension XCTestCase {
 
 final class NeuronDatasetsTests: XCTestCase {
   
+  func test_trim() async {
+    let trim = 10
+    let mnist = MNIST()
+    mnist.trim(to: trim)
+    let result = await mnist.build()
+    
+    XCTAssertEqual(result.training.count, trim)
+    XCTAssertEqual(result.val.count, trim)
+    
+    let cfar = CIFAR(classType: .airplane)
+    cfar.trim(to: trim)
+    let c = await cfar.build()
+    
+    XCTAssertEqual(c.training.count, trim)
+    // CIFAR doesn't have validation
+  }
+  
   func testCSVDataset_unvectorize() async {
     enum TestHeaders: String, CSVSupporting {
       case id = "Id"

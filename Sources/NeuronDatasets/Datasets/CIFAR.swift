@@ -45,7 +45,7 @@ public final class CIFAR: BaseDataset {
     let datasetData = get()
     data = datasetData
     
-    return data
+    return await super.build()
   }
   
   public override func build() {
@@ -56,6 +56,7 @@ public final class CIFAR: BaseDataset {
     
     let datasetData = get()
     data = datasetData
+    super.build()
   }
   
   private func buildLabel(value: Int) -> [Float] {

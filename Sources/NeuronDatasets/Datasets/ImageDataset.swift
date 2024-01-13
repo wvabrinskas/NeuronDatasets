@@ -88,11 +88,12 @@ public class ImageDataset: BaseDataset, Logger {
     }
     
     readDirectory()
-    return self.data
+    return await super.build()
   }
   
   public override func build() {
     readDirectory()
+    super.build()
   }
   
   private func getImageTensor(for url: String) -> Tensor {
