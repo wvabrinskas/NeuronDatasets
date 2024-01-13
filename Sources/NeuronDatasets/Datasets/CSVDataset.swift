@@ -20,7 +20,7 @@ public typealias Header = Hashable & CSVSupporting
 /// Creates a dataset from a CSV file.
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
-public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
+public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDataset {
 
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
@@ -48,16 +48,6 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
   }
   
   public var logLevel: LogLevel = .high
-  
-  public var unitDataSize: TensorSize = .init()
-  public var data: DatasetData = ([], []) {
-    didSet {
-      dataPassthroughSubject.send(data)
-    }
-  }
-  public var complete: Bool = false
-  public var dataPassthroughSubject: PassthroughSubject<DatasetData, Never> = .init()
-  public var overrideLabel: [Float]
   
   private let csvUrl: URL
   private let parameters: Parameters
@@ -93,16 +83,17 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
               parameters: Parameters = .init(),
               filter: CharacterSet? = nil) {
     self.csvUrl = csvUrl
-    self.overrideLabel = overrideLabel ?? []
     self.parameters = parameters
     self.headerToFetch = headerToFetch
     self.maxCount = maxCount
     self.validationSplitPercentage = max(min(0.9, validationSplitPercentage), 0.1)
     self.labelOffset = labelOffset
     self.filter = filter
+    
+    super.init(unitDataSize: .init(), overrideLabel: overrideLabel ?? [])
   }
   
-  public func build() async -> DatasetData {
+  public override func build() async -> DatasetData {
     do {
       try await get()
     } catch {
@@ -111,7 +102,7 @@ public final class CSVDataset<K: Header>: Dataset, Logger, RNNSupportedDataset {
     return data
   }
   
-  public func build() {
+  public override func build() {
     Task {
       do {
         try await get()

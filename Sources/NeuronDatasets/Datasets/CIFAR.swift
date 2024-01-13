@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import Neuron
 
-public final class CIFAR: Dataset {
+public final class CIFAR: BaseDataset {
   public enum ClassType: Int {
    case airplane,
     automobile,
@@ -22,26 +22,17 @@ public final class CIFAR: Dataset {
     ship,
     truck
   }
-  
-  public var data: DatasetData = ([], []) {
-    didSet {
-      dataPassthroughSubject.send(data)
-    }
-  }
-  
-  public var complete: Bool = false
-  public let unitDataSize: TensorSize = .init(rows: 32, columns: 32, depth: 3)
-  
-  public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
-  public var overrideLabel: [Float] = []
+    
   private let classType: ClassType
   
   public init(classType: ClassType, overrideLabel: [Float] = []) {
-    self.overrideLabel = overrideLabel
     self.classType = classType
+
+    super.init(unitDataSize: .init(rows: 32, columns: 32, depth: 3),
+               overrideLabel: overrideLabel)
   }
   
-  public func build() async -> DatasetData {
+  public override func build() async -> DatasetData {
     guard complete == false else {
       print("CIFAR has already been loaded")
       return data
@@ -57,7 +48,7 @@ public final class CIFAR: Dataset {
     return data
   }
   
-  public func build() {
+  public override func build() {
     guard complete == false else {
       print("CIFAR has already been loaded")
       return

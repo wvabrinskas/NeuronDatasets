@@ -4,20 +4,10 @@ import Combine
 import Neuron
  
 /// Creates an MNIST Dataset object to be used by a netowrk. The MNIST dataset is a set of 60000 grayscale hand-drawn numbers from 0-9.
-public class MNIST: Dataset {
-  public var data: DatasetData = ([], []) {
-    didSet {
-      dataPassthroughSubject.send(data)
-    }
-  }
-  public var complete: Bool = false
-  public let dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
-  public var overrideLabel: [Float] = []
-
+public class MNIST: BaseDataset {
   private let mnistSize: [Int] = [28,28,1]
   private var numToGet: Int?
   private var zeroCentered: Bool
-  public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
 
   public enum MNISTType: String, CaseIterable {
     case trainingSet = "train-images"
@@ -68,8 +58,11 @@ public class MNIST: Dataset {
     if let num = num {
       self.numToGet = num
     }
-    self.overrideLabel = overrideLabel
+
     self.zeroCentered = zeroCentered
+    
+    super.init(unitDataSize: .init(rows: 28, columns: 28, depth: 1),
+               overrideLabel: overrideLabel)
   }
   
   /// Build the actual dataset using the async/await system
@@ -81,7 +74,7 @@ public class MNIST: Dataset {
   }
   
   /// Build with support for Combine
-  public func build() {
+  public override func build() {
     Task {
       await build()
     }
@@ -89,7 +82,7 @@ public class MNIST: Dataset {
   
   /// Build with async/await support
   /// - Returns: downloaded dataset
-  public func build() async -> DatasetData {
+  public override func build() async -> DatasetData {
     guard complete == false else {
       print("MNIST has already been loaded")
       return self.data

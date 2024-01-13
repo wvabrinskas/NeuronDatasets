@@ -29,11 +29,9 @@ public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 public protocol Dataset: AnyObject {
   var unitDataSize: TensorSize { get }
   /// The resulting dataset
-  var data: DatasetData { get set }
+  var data: DatasetData { get }
   /// Indicator that the dataset has loaded
-  var complete: Bool { get set }
-  /// Combine subject for the dataset
-  var dataPassthroughSubject: PassthroughSubject<DatasetData, Never> { get }
+  var complete: Bool { get }
   /// Combine publisher for the dataset
   var dataPublisher: AnyPublisher<DatasetData, Never> { get }
   /// Override the label that the dataset provides
@@ -73,14 +71,47 @@ public protocol Dataset: AnyObject {
 
   /// Builds the dataset and will publish it to the Combine publisher and downstream subscribers.
   func build()
+  
+  /// Trims the dataset to specified count
+  func trim(to: Int)
 }
 
-public extension Dataset {
-  var dataPublisher:  AnyPublisher<DatasetData, Never> {
-    dataPassthroughSubject.eraseToAnyPublisher()
+open class BaseDataset: Dataset {
+  public var unitDataSize: Neuron.TensorSize = .init()
+  public var data: DatasetData = ([], []) {
+    didSet {
+      dataPassthroughSubject.send(data)
+    }
   }
 
-  func format(data: Data, offset: Int) -> [UInt8] {
+  public var complete: Bool = false
+  public var overrideLabel: [Float]
+  public var dataPublisher:  AnyPublisher<DatasetData, Never> {
+    dataPassthroughSubject.eraseToAnyPublisher()
+  }
+  
+  private var dataPassthroughSubject: PassthroughSubject<DatasetData, Never> = .init()
+  
+  public init(unitDataSize: Neuron.TensorSize, 
+              overrideLabel: [Float] = []) {
+    self.unitDataSize = unitDataSize
+    self.overrideLabel = overrideLabel
+  }
+
+  public func build() async -> DatasetData {
+    // override
+    ([],[])
+  }
+  
+  public func build() {
+    // override
+  }
+  
+  public func trim(to: Int) {
+   
+  }
+
+  public func format(data: Data, offset: Int) -> [UInt8] {
     let array = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
       return Array<UInt8>(pointer[offset..<pointer.count])
     }
@@ -88,7 +119,7 @@ public extension Dataset {
     return array
   }
 
-  func bitmap(path: String, offset: Int) -> [UInt8] {
+  public func bitmap(path: String, offset: Int) -> [UInt8] {
     let url = URL(fileURLWithPath: path)
 
     do {
@@ -100,13 +131,13 @@ public extension Dataset {
     }
   }
 
-  func read<T: FloatingPoint>(data: Data, offset: Int, scaleBy: T) -> [T] {
+  public func read<T: FloatingPoint>(data: Data, offset: Int, scaleBy: T) -> [T] {
     let bitmap = format(data: data, offset: offset)
     let result = bitmap.map { T($0) / scaleBy }
     return result
   }
 
-  func read<T: FloatingPoint>(path: String, offset: Int, scaleBy: T) -> [T] {
+  public func read<T: FloatingPoint>(path: String, offset: Int, scaleBy: T) -> [T] {
     let bitmap = bitmap(path: path, offset: offset)
     let result = bitmap.map { T($0) / scaleBy }
     return result

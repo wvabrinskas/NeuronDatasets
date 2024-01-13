@@ -17,7 +17,7 @@ import UIKit
 #endif
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
-public class ImageDataset: Dataset, Logger {
+public class ImageDataset: BaseDataset, Logger {
   public enum ImageDatasetError: Error, LocalizedError {
     case imageDepthError
     
@@ -45,16 +45,6 @@ public class ImageDataset: Dataset, Logger {
   }
   
   public var logLevel: LogLevel = .low
-  public var unitDataSize: Neuron.TensorSize
-  public var data: DatasetData = ([], []) {
-    didSet {
-      dataPassthroughSubject.send(data)
-    }
-  }
-  
-  public var complete: Bool = false
-  public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
-  public var overrideLabel: [Float] = []
   
   private let imagesDirectory: String
   private let zeroCentered: Bool
@@ -79,18 +69,19 @@ public class ImageDataset: Dataset, Logger {
               validationSplitPercent: Float = 0,
               zeroCentered: Bool = false) {
 
-    self.unitDataSize = TensorSize(rows: Int(imageSize.width),
-                                   columns: Int(imageSize.height),
-                                   depth: imageDepth.expectedDepth)
     self.imagesDirectory = imagesDirectory.path
-    self.overrideLabel = label
     self.zeroCentered = zeroCentered
     self.maxCount = maxCount
     self.validationSplitPercent = validationSplitPercent
     self.imageDepth = imageDepth
+    
+    super.init(unitDataSize: TensorSize(rows: Int(imageSize.width),
+                                        columns: Int(imageSize.height),
+                                        depth: imageDepth.expectedDepth),
+               overrideLabel: label)
   }
   
-  public func build() async -> DatasetData {
+  public override func build() async -> DatasetData {
     guard complete == false else {
       print("ImageDataset has already been loaded")
       return self.data
@@ -100,7 +91,7 @@ public class ImageDataset: Dataset, Logger {
     return self.data
   }
   
-  public func build() {
+  public override func build() {
     readDirectory()
   }
   

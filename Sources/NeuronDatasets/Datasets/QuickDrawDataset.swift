@@ -13,19 +13,8 @@ import Neuron
 
 @available(macOS 12.0, *)
 @available(iOS 15.0, *)
-public class QuickDrawDataset: Dataset, Logger {
+public class QuickDrawDataset: BaseDataset, Logger {
   public var logLevel: LogLevel
-
-  public var data: DatasetData = ([], []) {
-    didSet {
-      dataPassthroughSubject.send(data)
-    }
-  }
-  
-  public var overrideLabel: [Float]
-  public let unitDataSize: TensorSize = .init(rows: 28, columns: 28, depth: 1)
-  public var complete: Bool = false
-  public var dataPassthroughSubject = PassthroughSubject<DatasetData, Never>()
   
   private let trainingCount: Int
   private let validationCount: Int
@@ -43,10 +32,12 @@ public class QuickDrawDataset: Dataset, Logger {
     self.objectToGet = objectToGet
     self.zeroCentered = zeroCentered
     self.logLevel = logLevel
-    self.overrideLabel = overrideLabel
+    
+    super.init(unitDataSize: .init(rows: 28, columns: 28, depth: 1),
+               overrideLabel: overrideLabel)
   }
 
-  public func build() async -> DatasetData {
+  public override func build() async -> DatasetData {
     guard let path = objectToGet.url(), let url = URL(string: path) else {
       return data
     }
@@ -89,7 +80,7 @@ public class QuickDrawDataset: Dataset, Logger {
     return ([], [])
   }
   
-  public func build() {
+  public override func build() {
     Task {
       await build()
     }
