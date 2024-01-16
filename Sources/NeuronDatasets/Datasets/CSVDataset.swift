@@ -210,20 +210,14 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
             $0[safe: kHeaders.firstIndex(of: self.headerToFetch) ?? 0]?.trimmingCharactersOptionally(in: self.filter)
           }
         
-//        if headerToFetch.type == .sentence {
-//          let sentenceMap = parsedByHeader.compactMap { $0.split(separator: " ").map(String.init) }
-//          let strings = sentenceMap.flatMap { $0 }
-//          parsedByHeader = strings
-//        }
-        
         var result: [Tensor] = []
-        
-        parsedByHeader.forEach { string in
+
+        // we have to vectorize first THEN we can encode
+        let vectorized = parsedByHeader.map { string in
           let vector: [Tensor.Scalar]
-          let stringToVectorize: [String]
           
           if headerToFetch.type == .character {
-            stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+            let stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
             vector = vectorizer.vectorize(stringToVectorize).map { $0.asTensorScalar }
           } else {
             var wordsInSentence = string.split(separator: " ").map(String.init)
@@ -234,18 +228,37 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
                 wordsInSentence.insert(" ", at: i)
               }
             }
-            stringToVectorize = wordsInSentence
             vector = vectorizer.vectorize(wordsInSentence).map { $0.asTensorScalar }
           }
           
-          if parameters.oneHot == false {
-            result.append(Tensor(vector.map { [$0] }))
-          } else {
-            let oneHot = vectorizer.oneHot(stringToVectorize)
-            result.append(oneHot)
-          }
+          return vector
         }
-                
+        
+        guard parameters.oneHot else {
+          continuation.resume(returning: [Tensor(vectorized.map { [$0] })])
+          return
+        }
+        
+        parsedByHeader.forEach { string in
+          let stringToVectorize: [String]
+          
+          if headerToFetch.type == .character {
+            stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+          } else {
+            var wordsInSentence = string.split(separator: " ").map(String.init)
+            for i in 0..<headerToFetch.maxLengthOfItem() {
+              if i >= wordsInSentence.count {
+                wordsInSentence.append(".")
+              } else if i % 2 != 0 {
+                wordsInSentence.insert(" ", at: i)
+              }
+            }
+            stringToVectorize = wordsInSentence
+          }
+    
+          let oneHot = vectorizer.oneHot(stringToVectorize)
+          result.append(oneHot)
+        }
         
         continuation.resume(returning: result)
       }
