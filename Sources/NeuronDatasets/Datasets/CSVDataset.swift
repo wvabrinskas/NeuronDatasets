@@ -217,7 +217,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
           let vector: [Tensor.Scalar]
           
           if headerToFetch.type == .character {
-            let stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+            let stringToVectorize = Array(string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters[0..<headerToFetch.maxLengthOfItem()])
             vector = vectorizer.vectorize(stringToVectorize).map { $0.asTensorScalar }
           } else {
             var wordsInSentence = string.split(separator: " ").map(String.init)
@@ -228,7 +228,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
                 wordsInSentence.insert(" ", at: i)
               }
             }
-            vector = vectorizer.vectorize(wordsInSentence).map { $0.asTensorScalar }
+            vector = vectorizer.vectorize(Array(wordsInSentence[0..<headerToFetch.maxLengthOfItem()])).map { $0.asTensorScalar }
           }
           
           return vector
@@ -243,7 +243,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
           let stringToVectorize: [String]
           
           if headerToFetch.type == .character {
-            stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+            stringToVectorize = Array(string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters[0..<headerToFetch.maxLengthOfItem()])
           } else {
             var wordsInSentence = string.split(separator: " ").map(String.init)
             for i in 0..<headerToFetch.maxLengthOfItem() {
@@ -253,7 +253,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
                 wordsInSentence.insert(" ", at: i)
               }
             }
-            stringToVectorize = wordsInSentence
+            stringToVectorize = Array(wordsInSentence[0..<headerToFetch.maxLengthOfItem()])
           }
     
           let oneHot = vectorizer.oneHot(stringToVectorize)

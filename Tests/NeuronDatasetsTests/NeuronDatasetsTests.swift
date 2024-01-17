@@ -202,45 +202,23 @@ final class NeuronDatasetsTests: XCTestCase {
       return
     }
     
-    enum TestHeaders: String, CSVSupporting {
-      case username = "user_name"
-      case userLocation = "user_location"
-      case userDescription = "user_description"
-      case userCreated = "user_created"
-      case userFollowers = "user_followers"
-      case userFriends = "user_friends"
-      case userFavourites = "user_favourites"
-      case userVerified = "user_verified"
-      case date
-      case text
-      case hashtags
-      case source
-      case isRetweet = "isRetweet"
-      //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
-      
-      var type: CSVType { .sentence }
-      
-      func order() -> [TestHeaders] {
-        Self.allCases
-      }
-      
-      func maxLengthOfItem() -> Int {
-        switch self {
-        case .text:
-          return 140
-        default:
-          return 1
-        }
-      }
-    }
-    
-    let path = Bundle.module.path(forResource: "sentenceTweetsSmallTest", ofType: "csv")
-    
 //    enum TestHeaders: String, CSVSupporting {
-//      case id = "Id"
-//      case name = "Name"
+//      case username = "user_name"
+//      case userLocation = "user_location"
+//      case userDescription = "user_description"
+//      case userCreated = "user_created"
+//      case userFollowers = "user_followers"
+//      case userFriends = "user_friends"
+//      case userFavourites = "user_favourites"
+//      case userVerified = "user_verified"
+//      case date
+//      case text
+//      case hashtags
+//      case source
+//      case isRetweet = "isRetweet"
+//      //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
 //      
-//      var type: CSVType { .character }
+//      var type: CSVType { .sentence }
 //      
 //      func order() -> [TestHeaders] {
 //        Self.allCases
@@ -248,15 +226,37 @@ final class NeuronDatasetsTests: XCTestCase {
 //      
 //      func maxLengthOfItem() -> Int {
 //        switch self {
-//        case .name:
-//          return 10
+//        case .text:
+//          return 5 // word count
 //        default:
 //          return 1
 //        }
 //      }
 //    }
 //    
-//    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
+//    let path = Bundle.module.path(forResource: "sentenceTweetsSmallTest", ofType: "csv")
+    
+    enum TestHeaders: String, CSVSupporting {
+      case id = "Id"
+      case name = "Name"
+      
+      var type: CSVType { .character }
+      
+      func order() -> [TestHeaders] {
+        Self.allCases
+      }
+      
+      func maxLengthOfItem() -> Int {
+        switch self {
+        case .name:
+          return 10
+        default:
+          return 1
+        }
+      }
+    }
+    
+    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
@@ -276,11 +276,11 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let rnn = RNN(returnSequence: true,
                   dataset: csvDataset,
-                  classifierParameters: RNN.ClassifierParameters(batchSize: 16,
-                                                                 epochs: 30,
+                  classifierParameters: RNN.ClassifierParameters(batchSize: 64,
+                                                                 epochs: 100,
                                                                  accuracyThreshold: 0.8,
                                                                  threadWorkers: 8),
-                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.002,
+                  optimizerParameters: RNN.OptimizerParameters(learningRate: 0.0002,
                                                                metricsReporter: reporter),
                   lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
                                                         inputUnits: 100))// {
@@ -295,16 +295,16 @@ final class NeuronDatasetsTests: XCTestCase {
     reporter.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
-      //print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
+     // print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
     rnn.onEpochCompleted = {
-      let word = rnn.predict()
+      let word = rnn.predict(count: 10, randomizeSelection: true)
       print(word)
     }
     
     rnn.onAccuracyReached = {
-      let word = rnn.predict()
+      let word = rnn.predict(count: 10, randomizeSelection: true)
       print(word)
     }
     
