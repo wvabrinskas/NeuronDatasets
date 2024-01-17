@@ -9,7 +9,13 @@ import Neuron
 import Logger
 import Foundation
 
+public enum CSVType {
+  case character, // where each line is a single word
+       sentence // where each line is a full sentence
+}
+
 public protocol CSVSupporting: RawRepresentable<String>, CaseIterable {
+  var type: CSVType { get }
   func order() -> [Self]
   func maxLengthOfItem() -> Int
 }
@@ -200,21 +206,61 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
         parsedCSV = Array(Array(parsedCSV.dropFirst())[range]).filter({ $0.isEmpty == false })
         
         let parsedByHeader = parsedCSV.map { $0.components(separatedBy: ",") }
-          .map { $0[kHeaders.firstIndex(of: headerToFetch) ?? 0].trimmingCharactersOptionally(in: filter) }
+          .compactMap {
+            $0[safe: kHeaders.firstIndex(of: self.headerToFetch) ?? 0]?.trimmingCharactersOptionally(in: self.filter)
+          }
         
+        var result: [Tensor] = []
 
-        let vectorized = parsedByHeader.map { vectorizer.vectorize($0.fill(with: ".",
-                                                                           max: headerToFetch.maxLengthOfItem()).characters).map { $0.asTensorScalar } }
-        
-        if parameters.oneHot == false {
-          continuation.resume(returning: [Tensor(vectorized.map { [$0] })])
+        // we have to vectorize first THEN we can encode
+        let vectorized = parsedByHeader.map { string in
+          let vector: [Tensor.Scalar]
           
-        } else {
-          let oneHotted = parsedByHeader.map { vectorizer.oneHot($0.fill(with: ".",
-                                                                         max: headerToFetch.maxLengthOfItem()).characters)}
+          if headerToFetch.type == .character {
+            let stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+            vector = vectorizer.vectorize(stringToVectorize).map { $0.asTensorScalar }
+          } else {
+            var wordsInSentence = string.split(separator: " ").map(String.init)
+            for i in 0..<headerToFetch.maxLengthOfItem() {
+              if i >= wordsInSentence.count {
+                wordsInSentence.append(".")
+              } else if i % 2 != 0 {
+                wordsInSentence.insert(" ", at: i)
+              }
+            }
+            vector = vectorizer.vectorize(wordsInSentence).map { $0.asTensorScalar }
+          }
           
-          continuation.resume(returning: oneHotted)
+          return vector
         }
+        
+        guard parameters.oneHot else {
+          continuation.resume(returning: [Tensor(vectorized.map { [$0] })])
+          return
+        }
+        
+        parsedByHeader.forEach { string in
+          let stringToVectorize: [String]
+          
+          if headerToFetch.type == .character {
+            stringToVectorize = string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters
+          } else {
+            var wordsInSentence = string.split(separator: " ").map(String.init)
+            for i in 0..<headerToFetch.maxLengthOfItem() {
+              if i >= wordsInSentence.count {
+                wordsInSentence.append(".")
+              } else if i % 2 != 0 {
+                wordsInSentence.insert(" ", at: i)
+              }
+            }
+            stringToVectorize = wordsInSentence
+          }
+    
+          let oneHot = vectorizer.oneHot(stringToVectorize)
+          result.append(oneHot)
+        }
+        
+        continuation.resume(returning: result)
       }
     }
   }

@@ -35,6 +35,8 @@ final class NeuronDatasetsTests: XCTestCase {
       case id = "Id"
       case name = "Name"
       
+      var type: CSVType { .character }
+      
       func order() -> [TestHeaders] {
         Self.allCases
       }
@@ -80,6 +82,8 @@ final class NeuronDatasetsTests: XCTestCase {
     enum TestHeaders: String, CSVSupporting {
       case id = "Id"
       case name = "Name"
+      
+      var type: CSVType { .character }
       
       func order() -> [TestHeaders] {
         Self.allCases
@@ -130,6 +134,67 @@ final class NeuronDatasetsTests: XCTestCase {
     }
   }
   
+  func testCSVDataset_Sentence() async {
+    enum TestHeaders: String, CSVSupporting {
+      case username = "user_name"
+      case userLocation = "user_location"
+      case userDescription = "user_description"
+      case userCreated = "user_created"
+      case userFollowers = "user_followers"
+      case userFriends = "user_friends"
+      case userFavourites = "user_favourites"
+      case userVerified = "user_verified"
+      case date
+      case text
+      case hashtags
+      case source
+      case isRetweet = "isRetweet"
+      //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
+      
+      var type: CSVType { .sentence }
+      
+      func order() -> [TestHeaders] {
+        Self.allCases
+      }
+      
+      func maxLengthOfItem() -> Int {
+        switch self {
+        case .text:
+          return 140
+        default:
+          return 1
+        }
+      }
+    }
+    
+    let path = Bundle.module.path(forResource: "sentenceTweetsSmallTest", ofType: "csv")
+    
+    XCTAssertNotNil(path)
+    guard let path, let pathUrl = URL(string: path) else { return }
+    
+    let splitPercentage: Float = 0.2
+    
+    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                  headerToFetch: .text,
+                                                  validationSplitPercentage: splitPercentage,
+                                                  parameters: .init(oneHot: true))
+    
+    let build = await csvDataset.build()
+    
+    let name = build.training[0].data // should be "mary" with depth of 1
+    
+    let unvectorized = csvDataset.getWord(for: name).filter { $0 != "." }.joined()
+    
+    XCTAssertEqual(unvectorized, "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB".lowercased())
+    
+    let label = build.training[0].label
+    
+    let unvectorizedLabel = csvDataset.getWord(for: label).filter { $0 != "." }.joined()
+    
+    XCTAssertEqual(unvectorizedLabel, " #bitcoin books should i think about reading next? https://t.co/32gas26rkb".lowercased())
+  }
+  
+  
   func testLSTM() async {
     
     guard isGithubCI == false else {
@@ -138,8 +203,22 @@ final class NeuronDatasetsTests: XCTestCase {
     }
     
     enum TestHeaders: String, CSVSupporting {
-      case id = "Id"
-      case name = "Name"
+      case username = "user_name"
+      case userLocation = "user_location"
+      case userDescription = "user_description"
+      case userCreated = "user_created"
+      case userFollowers = "user_followers"
+      case userFriends = "user_friends"
+      case userFavourites = "user_favourites"
+      case userVerified = "user_verified"
+      case date
+      case text
+      case hashtags
+      case source
+      case isRetweet = "isRetweet"
+      //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
+      
+      var type: CSVType { .sentence }
       
       func order() -> [TestHeaders] {
         Self.allCases
@@ -147,15 +226,37 @@ final class NeuronDatasetsTests: XCTestCase {
       
       func maxLengthOfItem() -> Int {
         switch self {
-        case .name:
-          return 10
+        case .text:
+          return 140
         default:
           return 1
         }
       }
     }
     
-    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
+    let path = Bundle.module.path(forResource: "sentenceTweetsSmallTest", ofType: "csv")
+    
+//    enum TestHeaders: String, CSVSupporting {
+//      case id = "Id"
+//      case name = "Name"
+//      
+//      var type: CSVType { .character }
+//      
+//      func order() -> [TestHeaders] {
+//        Self.allCases
+//      }
+//      
+//      func maxLengthOfItem() -> Int {
+//        switch self {
+//        case .name:
+//          return 10
+//        default:
+//          return 1
+//        }
+//      }
+//    }
+//    
+//    let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
@@ -194,7 +295,7 @@ final class NeuronDatasetsTests: XCTestCase {
     reporter.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
-      print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
+      //print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
     rnn.onEpochCompleted = {
@@ -251,13 +352,15 @@ final class NeuronDatasetsTests: XCTestCase {
                                    metricsToGather: [.loss,
                                                      .accuracy,
                                                      .valAccuracy,
-                                                     .valLoss])
+                                                     .valLoss,
+                                                     .batchTime])
     
     optim.metricsReporter = reporter
     
     optim.metricsReporter?.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
+      print("batchTime: ", metrics[.batchTime] ?? 0)
       print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
