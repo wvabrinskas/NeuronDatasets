@@ -51,10 +51,12 @@ public class ImageDataset: BaseDataset, Logger {
   private let maxCount: Int
   private let validationSplitPercent: Float
   private let imageDepth: ImageDepth
+  private let labels: URL?
   
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
+  ///   - labels: The directory of the labels associated with the images. Should match the count of the images in the `imagesDirectory`
   ///   - imageSize: The expected size of the images
   ///   - label: The label to apply to every image.
   ///   - imageDepth: ImageDepth that describes the expected depth of the images.
@@ -62,6 +64,7 @@ public class ImageDataset: BaseDataset, Logger {
   ///   - validationSplitPercent: Number between 0 and 1. The lower the number the more likely it is the image will be added to the training dataset otherwise it'll be added to the validation dataset.
   ///   - zeroCentered: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
   public init(imagesDirectory: URL,
+              labels: URL? = nil,
               imageSize: CGSize,
               label: [Float],
               imageDepth: ImageDepth,
@@ -74,6 +77,7 @@ public class ImageDataset: BaseDataset, Logger {
     self.maxCount = maxCount
     self.validationSplitPercent = validationSplitPercent
     self.imageDepth = imageDepth
+    self.labels = labels
     
     super.init(unitDataSize: TensorSize(rows: Int(imageSize.width),
                                         columns: Int(imageSize.height),
