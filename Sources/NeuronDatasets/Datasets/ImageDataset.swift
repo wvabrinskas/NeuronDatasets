@@ -56,7 +56,7 @@ public class ImageDataset: BaseDataset, Logger {
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
-  ///   - labels: The directory of the labels associated with the images. Should match the count of the images in the `imagesDirectory`
+  ///   - labels: The directory of the CSV of labels associated with the images. Should be 1 line with all labels comma separated, a label should be an integer from 1 to the number of classes. Should match the count of the images in the `imagesDirectory`.
   ///   - imageSize: The expected size of the images
   ///   - label: The label to apply to every image.
   ///   - imageDepth: ImageDepth that describes the expected depth of the images.
@@ -129,6 +129,24 @@ public class ImageDataset: BaseDataset, Logger {
     
     return Tensor()
   }
+  
+  internal func getLabelsIfNeeded() throws -> [Tensor]? {
+    guard let labels else { return nil }
+    
+    let content = try String(contentsOfFile: labels.absoluteString).trimmingCharacters(in: .decimalDigits.inverted)
+    let parsedCSV = content.components(separatedBy: ",").compactMap { Float($0) }
+    let maxLabel = parsedCSV.max
+    
+    var labelsToReturn: [Tensor] = []
+    parsedCSV.forEach { val in
+      var zeros = [Float](repeating: 0, count: Int(maxLabel))
+      let index = Int(val - 1)
+      zeros[index] = 1.0
+      labelsToReturn.append(Tensor(zeros))
+    }
+    
+    return labelsToReturn
+  }
  
   private func readDirectory() {
     guard complete == false else {
@@ -144,11 +162,13 @@ public class ImageDataset: BaseDataset, Logger {
       
       let maximum = maxCount == 0 ? contents.count : maxCount
       
+      let labelsFromUrl = try getLabelsIfNeeded()
+      
       for index in 0..<maximum {
         let imageUrl = contents[index]
         let path = "file://" + imagesDirectory.appending("/\(imageUrl)")
         let imageData = getImageTensor(for: path)
-        let label = Tensor(overrideLabel)
+        let label = labelsFromUrl?[safe: index] ?? Tensor(overrideLabel)
         if Float.random(in: 0...1) >= validationSplitPercent {
           training.append(DatasetModel(data: imageData, label: label))
         } else {
