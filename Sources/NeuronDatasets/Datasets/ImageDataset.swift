@@ -18,6 +18,7 @@ import UIKit
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
 public class ImageDataset: BaseDataset, Logger {
+  public typealias ImageSorting = (URL, URL) -> Bool
   public enum ImageDatasetError: Error, LocalizedError {
     case imageDepthError
     
@@ -52,11 +53,13 @@ public class ImageDataset: BaseDataset, Logger {
   private let validationSplitPercent: Float
   private let imageDepth: ImageDepth
   private let labels: URL?
+  private let imageSorting: ImageSorting?
   
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
   ///   - labels: The directory of the CSV of labels associated with the images. Should be 1 line with all labels comma separated, a label should be an integer from 1 to the number of classes. Should match the count of the images in the `imagesDirectory`.
+  ///   - imageSorting: The sorting to be used on the images directory based on their urls. This is useful if youre trying to match the order of the labels to the order of the images.
   ///   - imageSize: The expected size of the images
   ///   - label: The label to apply to every image.
   ///   - imageDepth: ImageDepth that describes the expected depth of the images.
@@ -65,6 +68,7 @@ public class ImageDataset: BaseDataset, Logger {
   ///   - zeroCentered: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
   public init(imagesDirectory: URL,
               labels: URL? = nil,
+              imageSorting: ImageSorting? = nil,
               imageSize: CGSize,
               label: [Float],
               imageDepth: ImageDepth,
@@ -78,6 +82,7 @@ public class ImageDataset: BaseDataset, Logger {
     self.validationSplitPercent = validationSplitPercent
     self.imageDepth = imageDepth
     self.labels = labels
+    self.imageSorting = imageSorting
     
     super.init(unitDataSize: TensorSize(rows: Int(imageSize.width),
                                         columns: Int(imageSize.height),
@@ -160,9 +165,14 @@ public class ImageDataset: BaseDataset, Logger {
     do {
       guard let url = URL(string: imagesDirectory) else { return }
       
-      let contents = try FileManager.default.contentsOfDirectory(at: url, 
+      var contents = try FileManager.default.contentsOfDirectory(at: url,
                                                                  includingPropertiesForKeys: nil,
                                                                  options: .skipsHiddenFiles)
+      
+      if let imageSorting {
+        contents = contents.sorted(by: imageSorting)
+      }
+      
       var training: [DatasetModel] = []
       var validation: [DatasetModel] = []
       
@@ -173,7 +183,7 @@ public class ImageDataset: BaseDataset, Logger {
       for index in 0..<maximum {
         let imageUrl = contents[index]
         let imageData = getImageTensor(for: imageUrl.absoluteString)
-        let label = labelsFromUrl?[safe: index] ?? Tensor(overrideLabel)
+        let label = labelsFromUrl?[index] ?? Tensor(overrideLabel)
         if Float.random(in: 0...1) >= validationSplitPercent {
           training.append(DatasetModel(data: imageData, label: label))
         } else {
