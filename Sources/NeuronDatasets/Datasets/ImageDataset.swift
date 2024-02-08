@@ -138,11 +138,12 @@ public class ImageDataset: BaseDataset, Logger {
     let maxLabel = parsedCSV.max
     
     var labelsToReturn: [Tensor] = []
+    var zeros = [Float](repeating: 0, count: Int(maxLabel))
     parsedCSV.forEach { val in
-      var zeros = [Float](repeating: 0, count: Int(maxLabel))
       let index = Int(val - 1)
       zeros[index] = 1.0
       labelsToReturn.append(Tensor(zeros))
+      zeros[index] = 0.0
     }
     
     return labelsToReturn
