@@ -183,6 +183,9 @@ public class ImageDataset: BaseDataset, Logger {
       for index in 0..<maximum {
         let imageUrl = contents[index]
         let imageData = getImageTensor(for: imageUrl.absoluteString)
+        
+        precondition(imageData.shape == unitDataSize.asArray)
+        
         let label = labelsFromUrl?[index] ?? Tensor(overrideLabel)
         if self.labels != nil, labelsFromUrl?[safe: index] == nil {
           fatalError("Label is missing for: \(imageUrl)")
