@@ -122,7 +122,9 @@ public extension NSImage {
   
   
   func asRGBTensor(zeroCenter: Bool = false) -> Tensor {
-    guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
+    guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else {
+      return Tensor()
+    }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
     var rArray: [Float] = []

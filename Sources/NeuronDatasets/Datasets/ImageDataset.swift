@@ -101,7 +101,9 @@ public class ImageDataset: BaseDataset, Logger {
   }
   
   private func getImageTensor(for url: String) -> Tensor {
-    guard let rawUrl = URL(string: url) else { return Tensor() }
+    guard let rawUrl = URL(string: url) else {
+      return Tensor()
+    }
     
     #if os(macOS)
     if let image = NSImage(contentsOf: rawUrl) {
@@ -156,8 +158,11 @@ public class ImageDataset: BaseDataset, Logger {
     }
     
     do {
-      let contents = try FileManager.default.contentsOfDirectory(atPath: imagesDirectory)
+      guard let url = URL(string: imagesDirectory) else { return }
       
+      let contents = try FileManager.default.contentsOfDirectory(at: url, 
+                                                                 includingPropertiesForKeys: nil,
+                                                                 options: .skipsHiddenFiles)
       var training: [DatasetModel] = []
       var validation: [DatasetModel] = []
       
@@ -167,8 +172,7 @@ public class ImageDataset: BaseDataset, Logger {
       
       for index in 0..<maximum {
         let imageUrl = contents[index]
-        let path = "file://" + imagesDirectory.appending("/\(imageUrl)")
-        let imageData = getImageTensor(for: path)
+        let imageData = getImageTensor(for: imageUrl.absoluteString)
         let label = labelsFromUrl?[safe: index] ?? Tensor(overrideLabel)
         if Float.random(in: 0...1) >= validationSplitPercent {
           training.append(DatasetModel(data: imageData, label: label))
