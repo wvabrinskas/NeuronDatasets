@@ -32,7 +32,7 @@ public class ImageDataset: BaseDataset, Logger {
   public enum ImageDepth: CaseIterable {
     case rgb, rgba, grayScale
     
-    var expectedDepth: Int {
+    public var expectedDepth: Int {
       switch self {
       case .rgb:
         return 3
