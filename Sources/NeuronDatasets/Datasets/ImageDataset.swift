@@ -18,6 +18,7 @@ import UIKit
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
 public class ImageDataset: BaseDataset, Logger {
+  public typealias ImageSorting = (URL, URL) -> Bool
   public enum ImageDatasetError: Error, LocalizedError {
     case imageDepthError
     
@@ -32,7 +33,7 @@ public class ImageDataset: BaseDataset, Logger {
   public enum ImageDepth: CaseIterable {
     case rgb, rgba, grayScale
     
-    var expectedDepth: Int {
+    public var expectedDepth: Int {
       switch self {
       case .rgb:
         return 3
@@ -51,10 +52,14 @@ public class ImageDataset: BaseDataset, Logger {
   private let maxCount: Int
   private let validationSplitPercent: Float
   private let imageDepth: ImageDepth
+  private let labels: URL?
+  private let imageSorting: ImageSorting?
   
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
+  ///   - labels: The directory of the CSV of labels associated with the images. Should be 1 line with all labels comma separated, a label should be an integer from 1 to the number of classes. Should match the count of the images in the `imagesDirectory`.
+  ///   - imageSorting: The sorting to be used on the images directory based on their urls. This is useful if youre trying to match the order of the labels to the order of the images.
   ///   - imageSize: The expected size of the images
   ///   - label: The label to apply to every image.
   ///   - imageDepth: ImageDepth that describes the expected depth of the images.
@@ -62,6 +67,8 @@ public class ImageDataset: BaseDataset, Logger {
   ///   - validationSplitPercent: Number between 0 and 1. The lower the number the more likely it is the image will be added to the training dataset otherwise it'll be added to the validation dataset.
   ///   - zeroCentered: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
   public init(imagesDirectory: URL,
+              labels: URL? = nil,
+              imageSorting: ImageSorting? = nil,
               imageSize: CGSize,
               label: [Float],
               imageDepth: ImageDepth,
@@ -74,6 +81,8 @@ public class ImageDataset: BaseDataset, Logger {
     self.maxCount = maxCount
     self.validationSplitPercent = validationSplitPercent
     self.imageDepth = imageDepth
+    self.labels = labels
+    self.imageSorting = imageSorting
     
     super.init(unitDataSize: TensorSize(rows: Int(imageSize.width),
                                         columns: Int(imageSize.height),
@@ -97,7 +106,9 @@ public class ImageDataset: BaseDataset, Logger {
   }
   
   private func getImageTensor(for url: String) -> Tensor {
-    guard let rawUrl = URL(string: url) else { return Tensor() }
+    guard let rawUrl = URL(string: url) else {
+      return Tensor()
+    }
     
     #if os(macOS)
     if let image = NSImage(contentsOf: rawUrl) {
@@ -125,6 +136,25 @@ public class ImageDataset: BaseDataset, Logger {
     
     return Tensor()
   }
+  
+  internal func getLabelsIfNeeded() throws -> [Tensor]? {
+    guard let labels else { return nil }
+    
+    let content = try String(contentsOfFile: labels.absoluteString).trimmingCharacters(in: .decimalDigits.inverted)
+    let parsedCSV = content.components(separatedBy: ",").compactMap { Float($0) }
+    let maxLabel = parsedCSV.max
+    
+    var labelsToReturn: [Tensor] = []
+    var zeros = [Float](repeating: 0, count: Int(maxLabel))
+    parsedCSV.forEach { val in
+      let index = Int(val - 1)
+      zeros[index] = 1.0
+      labelsToReturn.append(Tensor(zeros))
+      zeros[index] = 0.0
+    }
+    
+    return labelsToReturn
+  }
  
   private func readDirectory() {
     guard complete == false else {
@@ -133,18 +163,33 @@ public class ImageDataset: BaseDataset, Logger {
     }
     
     do {
-      let contents = try FileManager.default.contentsOfDirectory(atPath: imagesDirectory)
+      guard let url = URL(string: imagesDirectory) else { return }
+      
+      var contents = try FileManager.default.contentsOfDirectory(at: url,
+                                                                 includingPropertiesForKeys: nil,
+                                                                 options: .skipsHiddenFiles)
+      
+      if let imageSorting {
+        contents = contents.sorted(by: imageSorting)
+      }
       
       var training: [DatasetModel] = []
       var validation: [DatasetModel] = []
       
       let maximum = maxCount == 0 ? contents.count : maxCount
       
+      let labelsFromUrl = try getLabelsIfNeeded()
+      
       for index in 0..<maximum {
         let imageUrl = contents[index]
-        let path = "file://" + imagesDirectory.appending("/\(imageUrl)")
-        let imageData = getImageTensor(for: path)
-        let label = Tensor(overrideLabel)
+        let imageData = getImageTensor(for: imageUrl.absoluteString)
+        
+        precondition(imageData.shape == unitDataSize.asArray)
+        
+        let label = labelsFromUrl?[index] ?? Tensor(overrideLabel)
+        if self.labels != nil, labelsFromUrl?[safe: index] == nil {
+          fatalError("Label is missing for: \(imageUrl)")
+        }
         if Float.random(in: 0...1) >= validationSplitPercent {
           training.append(DatasetModel(data: imageData, label: label))
         } else {

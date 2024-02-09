@@ -134,6 +134,53 @@ final class NeuronDatasetsTests: XCTestCase {
     }
   }
   
+  func testImageDatasetLabelsCheck() {
+    ImageDataset.ImageDepth.allCases.forEach { depth in
+      let imageSize = CGSize(width: 20, height: 20)
+      let imageLabels = URL(string: Bundle.module.path(forResource: "test-image-labels", ofType: "csv")!)
+    
+      let dataset = ImageDataset(imagesDirectory: URL(string: "https://images.com")!,
+                                 labels: imageLabels,
+                                 imageSize: imageSize,
+                                 label: [1.0],
+                                 imageDepth: depth)
+      
+      do {
+        let labels = try dataset.getLabelsIfNeeded()
+        let expectedLabels: [[Tensor.Scalar]] = [[1,0,0,0,0],
+                                         [1,0,0,0,0],
+                                         [1,0,0,0,0],
+                                         [1,0,0,0,0],
+                                         [0,1,0,0,0],
+                                         [0,1,0,0,0],
+                                         [0,1,0,0,0],
+                                         [0,1,0,0,0],
+                                         [0,0,1,0,0],
+                                         [0,0,1,0,0],
+                                         [0,0,1,0,0],
+                                         [0,0,1,0,0],
+                                         [0,0,0,1,0],
+                                         [0,0,0,1,0],
+                                         [0,0,0,1,0],
+                                         [0,0,0,1,0],
+                                         [0,0,0,0,1],
+                                         [0,0,0,0,1],
+                                         [0,0,0,0,1],
+                                         [0,0,0,0,1]]
+        XCTAssertEqual(labels?.count, 4 * 5)
+        let flat = labels!.map { $0.value }.map { $0.flatten() }
+        XCTAssertEqual(flat, expectedLabels)
+      } catch {
+        print(error.localizedDescription)
+      }
+ 
+      
+      XCTAssertEqual(dataset.unitDataSize, TensorSize(rows: Int(imageSize.height),
+                                                      columns: Int(imageSize.width),
+                                                      depth: depth.expectedDepth))
+    }
+  }
+  
   func testCSVDataset_Sentence() async {
     enum TestHeaders: String, CSVSupporting {
       case username = "user_name"
