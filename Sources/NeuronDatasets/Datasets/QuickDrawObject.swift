@@ -362,7 +362,7 @@ public enum QuickDrawObject: String, CaseIterable {
   }
   
   func label() -> [Float] {
-    var totalLabels: [Float] = []
+    var totalLabels: [Float] = [Float](repeating: 0, count: Self.allCases.count)
     for i in 0..<Self.allCases.count {
       totalLabels[i] = Self.allCases[i] == self ? 1 : 0
     }
