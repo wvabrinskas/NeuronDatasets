@@ -13,6 +13,14 @@ extension XCTestCase {
 
 final class NeuronDatasetsTests: XCTestCase {
   
+  func test_PokemonDataset() async {
+    guard isGithubCI == false else { return }
+    
+    let dataset = PokemonDataset()
+    let out = await dataset.build()
+    print(out)
+  }
+  
   func test_trim() async {
     let trim = 10
     let mnist = MNIST()
