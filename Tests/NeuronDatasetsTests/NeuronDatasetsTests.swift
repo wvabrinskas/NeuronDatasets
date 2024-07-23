@@ -393,7 +393,7 @@ final class NeuronDatasetsTests: XCTestCase {
       ]
     }
     
-    let optim = Adam(network, learningRate: 0.0001, l2Normalize: false)
+    let optim = Adam(network, learningRate: 0.0001)
     
     let reporter = MetricsReporter(frequency: 1,
                                    metricsToGather: [.loss,

@@ -5,9 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "NeuronDatasets",
-    platforms: [ .iOS(.v13),
-                 .tvOS(.v13),
-                 .watchOS(.v6),
+    platforms: [ .iOS(.v14),
+                 .tvOS(.v14),
+                 .watchOS(.v7),
                  .macOS(.v11)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
@@ -17,8 +17,8 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-      .package(url: "https://github.com/wvabrinskas/Neuron.git", from: "2.0.12"),
-      //.package(path: "../Neuron"),
+      //.package(url: "https://github.com/wvabrinskas/Neuron.git", from: "2.0.12"),
+      .package(path: "../Neuron"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
