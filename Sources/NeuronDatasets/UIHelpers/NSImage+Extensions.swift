@@ -38,7 +38,7 @@ public extension NSImage {
       height = max(CGFloat(rep.pixelsHigh), height)
     }
     
-    var grayArray: [Float] = []
+    var grayArray: [Tensor.Scalar] = []
 
     for y in 0..<Int(height) {
       for x in 0..<Int(width) {
@@ -46,9 +46,9 @@ public extension NSImage {
         
         let pixelInfo: Int = ((Int(width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        let r = Float(data[pixelInfo])
-        let g = Float(data[pixelInfo + 1])
-        let b = Float(data[pixelInfo + 2])
+        let r = Tensor.Scalar(data[pixelInfo])
+        let g = Tensor.Scalar(data[pixelInfo + 1])
+        let b = Tensor.Scalar(data[pixelInfo + 2])
         
         var gray = (r + g + b) / 3
 
@@ -69,10 +69,10 @@ public extension NSImage {
     guard let pixelData = cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data else { return Tensor() }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
-    var rArray: [Float] = []
-    var gArray: [Float] = []
-    var bArray: [Float] = []
-    var aArray: [Float] = []
+    var rArray: [Tensor.Scalar] = []
+    var gArray: [Tensor.Scalar] = []
+    var bArray: [Tensor.Scalar] = []
+    var aArray: [Tensor.Scalar] = []
 
     var width: CGFloat = 0
     var height: CGFloat = 0
@@ -88,10 +88,10 @@ public extension NSImage {
         
         let pixelInfo: Int = ((Int(width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        var r = Float(data[pixelInfo])
-        var g = Float(data[pixelInfo + 1])
-        var b = Float(data[pixelInfo + 2])
-        var a = Float(data[pixelInfo + 3])
+        var r = Tensor.Scalar(data[pixelInfo])
+        var g = Tensor.Scalar(data[pixelInfo + 1])
+        var b = Tensor.Scalar(data[pixelInfo + 2])
+        var a = Tensor.Scalar(data[pixelInfo + 3])
 
         if zeroCenter {
           r = (r - 127.5) / 127.5
@@ -127,9 +127,9 @@ public extension NSImage {
     }
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
-    var rArray: [Float] = []
-    var gArray: [Float] = []
-    var bArray: [Float] = []
+    var rArray: [Tensor.Scalar] = []
+    var gArray: [Tensor.Scalar] = []
+    var bArray: [Tensor.Scalar] = []
     
     var width: CGFloat = 0
     var height: CGFloat = 0
@@ -145,9 +145,9 @@ public extension NSImage {
         
         let pixelInfo: Int = ((Int(width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        var r = Float(data[pixelInfo])
-        var g = Float(data[pixelInfo + 1])
-        var b = Float(data[pixelInfo + 2])
+        var r = Tensor.Scalar(data[pixelInfo])
+        var g = Tensor.Scalar(data[pixelInfo + 1])
+        var b = Tensor.Scalar(data[pixelInfo + 2])
         
         if zeroCenter {
           r = (r - 127.5) / 127.5

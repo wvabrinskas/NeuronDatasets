@@ -37,7 +37,7 @@ public class MNIST: BaseDataset {
       }
     }
     
-    var modifier: Float {
+    var modifier: Tensor.Scalar {
       switch self {
       case .trainingSet, .valSet:
         return 255.0
@@ -53,7 +53,7 @@ public class MNIST: BaseDataset {
   ///   - label: The label override for each image. Optional as the MNIST dataset provides labels.
   ///   - zeroCentered: Determines if the dataset is scaled to be between -1 and 1 or between 0 and 1.
   public init(only num: Int? = nil,
-              overrideLabel: [Float] = [],
+              overrideLabel: [Tensor.Scalar] = [],
               zeroCentered: Bool = false) {
     if let num = num {
       self.numToGet = num
@@ -91,12 +91,12 @@ public class MNIST: BaseDataset {
     print("Loading MNIST dataset into memory. This could take a while")
     
     
-    self.data = await withTaskGroup(of: (data: [[[Float]]], type: MNISTType).self, body: { group in
+    self.data = await withTaskGroup(of: (data: [[[Tensor.Scalar]]], type: MNISTType).self, body: { group in
       
-      var trainingDataSets: [(data: [[[Float]]], type: MNISTType)] = []
+      var trainingDataSets: [(data: [[[Tensor.Scalar]]], type: MNISTType)] = []
       trainingDataSets.reserveCapacity(2)
       
-      var valDataSets: [(data: [[[Float]]], type: MNISTType)] = []
+      var valDataSets: [(data: [[[Tensor.Scalar]]], type: MNISTType)] = []
       valDataSets.reserveCapacity(2)
       
       group.addTask(priority: .userInitiated) {
@@ -160,7 +160,7 @@ public class MNIST: BaseDataset {
     return await super.build()
   }
   
-  private func buildLabel(value: Int) -> [Float] {
+  private func buildLabel(value: Int) -> [Tensor.Scalar] {
     if !self.overrideLabel.isEmpty {
       return overrideLabel
     }
@@ -168,12 +168,12 @@ public class MNIST: BaseDataset {
     guard value >= 0 else {
       return []
     }
-    var labels = [Float].init(repeating: 0, count: 10)
+    var labels = [Tensor.Scalar].init(repeating: 0, count: 10)
     labels[value] = 1
     return labels
   }
   
-  public func get(type: MNISTType) -> [[[Float]]] {
+  public func get(type: MNISTType) -> [[[Tensor.Scalar]]] {
     let path = Bundle.module.path(forResource: type.rawValue, ofType: nil)
     
     guard let path = path else {
@@ -182,7 +182,7 @@ public class MNIST: BaseDataset {
     
     let shouldZeroCenter: Bool = zeroCentered && (type == .valSet || type == .trainingSet)
     
-    var scale: Float = shouldZeroCenter ? 1 : 255
+    var scale: Tensor.Scalar = shouldZeroCenter ? 1 : 255
     
     if type == .trainingLabels || type == .valLabels {
       scale = type.modifier

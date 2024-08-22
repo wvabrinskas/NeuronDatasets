@@ -25,7 +25,7 @@ public final class CIFAR: BaseDataset {
     
   private let classType: ClassType
   
-  public init(classType: ClassType, overrideLabel: [Float] = []) {
+  public init(classType: ClassType, overrideLabel: [Tensor.Scalar] = []) {
     self.classType = classType
 
     super.init(unitDataSize: .init(rows: 32, columns: 32, depth: 3),
@@ -59,7 +59,7 @@ public final class CIFAR: BaseDataset {
     super.build()
   }
   
-  private func buildLabel(value: Int) -> [Float] {
+  private func buildLabel(value: Int) -> [Tensor.Scalar] {
     if !self.overrideLabel.isEmpty {
       return overrideLabel
     }
@@ -67,7 +67,7 @@ public final class CIFAR: BaseDataset {
     guard value >= 0 else {
       return []
     }
-    var labels = [Float].init(repeating: 0, count: 10)
+    var labels = [Tensor.Scalar].init(repeating: 0, count: 10)
     labels[value] = 1
     return labels
   }
@@ -94,7 +94,7 @@ public final class CIFAR: BaseDataset {
 
           let label = Int(runningImage.removeFirst())
           
-          let newRunningImage = runningImage.map { (Float($0) - 127.5) / 127.5 } // zero center
+          let newRunningImage = runningImage.map { (Tensor.Scalar($0) - 127.5) / 127.5 } // zero center
           
           if label == classType.rawValue {
             let reshapedRunningImage = newRunningImage.reshape(columns: 32).reshape(columns: 32)

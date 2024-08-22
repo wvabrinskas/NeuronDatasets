@@ -56,7 +56,7 @@ final class NeuronDatasetsTests: XCTestCase {
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
     
-    let splitPercentage: Float = 0.2
+    let splitPercentage: Tensor.Scalar = 0.2
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .name,
@@ -104,7 +104,7 @@ final class NeuronDatasetsTests: XCTestCase {
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
     
-    let splitPercentage: Float = 0.2
+    let splitPercentage: Tensor.Scalar = 0.2
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .name,
@@ -113,7 +113,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let build = await csvDataset.build()
     
-    let trainingCount = Int(floor(Float(970 - 1) * Float(1 - splitPercentage)))
+    let trainingCount = Int(floor(Tensor.Scalar(970 - 1) * Tensor.Scalar(1 - splitPercentage)))
     let valCount = (970 - 1) - trainingCount
 
     XCTAssertEqual(build.training.count, trainingCount)
@@ -219,7 +219,7 @@ final class NeuronDatasetsTests: XCTestCase {
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
     
-    let splitPercentage: Float = 0.2
+    let splitPercentage: Tensor.Scalar = 0.2
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .text,
@@ -308,7 +308,7 @@ final class NeuronDatasetsTests: XCTestCase {
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
     
-    let splitPercentage: Float = 0.2
+    let splitPercentage: Tensor.Scalar = 0.2
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .name,

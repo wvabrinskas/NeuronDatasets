@@ -50,7 +50,7 @@ public class ImageDataset: BaseDataset, Logger {
   private let imagesDirectory: String
   private let zeroCentered: Bool
   private let maxCount: Int
-  private let validationSplitPercent: Float
+  private let validationSplitPercent: Tensor.Scalar
   private let imageDepth: ImageDepth
   private let labels: URL?
   private let imageSorting: ImageSorting?
@@ -70,10 +70,10 @@ public class ImageDataset: BaseDataset, Logger {
               labels: URL? = nil,
               imageSorting: ImageSorting? = nil,
               imageSize: CGSize,
-              label: [Float],
+              label: [Tensor.Scalar],
               imageDepth: ImageDepth,
               maxCount: Int = 0,
-              validationSplitPercent: Float = 0,
+              validationSplitPercent: Tensor.Scalar = 0,
               zeroCentered: Bool = false) {
 
     self.imagesDirectory = imagesDirectory.path
@@ -141,11 +141,11 @@ public class ImageDataset: BaseDataset, Logger {
     guard let labels else { return nil }
     
     let content = try String(contentsOfFile: labels.absoluteString).trimmingCharacters(in: .decimalDigits.inverted)
-    let parsedCSV = content.components(separatedBy: ",").compactMap { Float($0) }
+    let parsedCSV = content.components(separatedBy: ",").compactMap { Tensor.Scalar($0) }
     let maxLabel = parsedCSV.max
     
     var labelsToReturn: [Tensor] = []
-    var zeros = [Float](repeating: 0, count: Int(maxLabel))
+    var zeros = [Tensor.Scalar](repeating: 0, count: Int(maxLabel))
     parsedCSV.forEach { val in
       let index = Int(val - 1)
       zeros[index] = 1.0
@@ -190,7 +190,7 @@ public class ImageDataset: BaseDataset, Logger {
         if self.labels != nil, labelsFromUrl?[safe: index] == nil {
           fatalError("Label is missing for: \(imageUrl)")
         }
-        if Float.random(in: 0...1) >= validationSplitPercent {
+        if Tensor.Scalar.random(in: 0...1) >= validationSplitPercent {
           training.append(DatasetModel(data: imageData, label: label))
         } else {
           validation.append(DatasetModel(data: imageData, label: label))

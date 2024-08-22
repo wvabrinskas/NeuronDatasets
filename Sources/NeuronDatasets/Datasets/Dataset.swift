@@ -15,12 +15,12 @@ public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 /// Example Datasets are:
 /// ```
 /// MNIST(only num: Int? = nil,
-///       label: [Float] = [],
+///       label: [Tensor.Scalar] = [],
 ///       zeroCentered: Bool = false)
 /// ```
 /// ```
 /// QuickDrawDataset(objectToGet: QuickDrawObject,
-///                    label: [Float],
+///                    label: [Tensor.Scalar],
 ///                    trainingCount: Int = 1000,
 ///                    validationCount: Int = 1000,
 ///                    zeroCentered: Bool = false,
@@ -35,7 +35,7 @@ public protocol Dataset: AnyObject {
   /// Combine publisher for the dataset
   var dataPublisher: AnyPublisher<DatasetData, Never> { get }
   /// Override the label that the dataset provides
-  var overrideLabel: [Float] { get set}
+  var overrideLabel: [Tensor.Scalar] { get set}
 
   /// Read the dataset file from a path
   /// - Parameters:
@@ -85,7 +85,7 @@ open class BaseDataset: Dataset {
   }
 
   public var complete: Bool = false
-  public var overrideLabel: [Float]
+  public var overrideLabel: [Tensor.Scalar]
   public var dataPublisher:  AnyPublisher<DatasetData, Never> {
     dataPassthroughSubject.eraseToAnyPublisher()
   }
@@ -94,7 +94,7 @@ open class BaseDataset: Dataset {
   private var trimTo: Int?
   
   public init(unitDataSize: Neuron.TensorSize, 
-              overrideLabel: [Float] = []) {
+              overrideLabel: [Tensor.Scalar] = []) {
     self.unitDataSize = unitDataSize
     self.overrideLabel = overrideLabel
   }
