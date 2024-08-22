@@ -58,7 +58,7 @@ let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv") 
 
 guard let path, let pathUrl = URL(string: path) else { return }
 
-let splitPercentage: Float = 0.2
+let splitPercentage: Tensor.Scalar = 0.2
 
 let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                               headerToFetch: .name,

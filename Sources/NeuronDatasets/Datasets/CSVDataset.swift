@@ -62,7 +62,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
   private let maxCount: Int
   private let cache: NSCache<NSString, NSArray> = .init()
   private var vectorizedAlready: [K: Bool] = [:]
-  private let validationSplitPercentage: Float
+  private let validationSplitPercentage: Tensor.Scalar
   private let labelOffset: Int
   private let filter: CharacterSet?
   
@@ -84,8 +84,8 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
               headerToFetch: K,
               maxCount: Int = 0, // 0 is all
               labelOffset: Int = 1,
-              validationSplitPercentage: Float, // max is 0.9 and min is 0.1
-              overrideLabel: [Float]? = nil,
+              validationSplitPercentage: Tensor.Scalar, // max is 0.9 and min is 0.1
+              overrideLabel: [Tensor.Scalar]? = nil,
               parameters: Parameters = .init(),
               filter: CharacterSet? = nil) {
     self.csvUrl = csvUrl
@@ -141,7 +141,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
     try fetchRawCSV()
     let csvData = try await getCSVData()
     
-    let trainingSplit = Int(floor(Float(csvData.count) * (1 - validationSplitPercentage)))
+    let trainingSplit = Int(floor(Tensor.Scalar(csvData.count) * (1 - validationSplitPercentage)))
     let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
     
     let csvTrainingData = Array(csvData[..<trainingSplit]).map { d in

@@ -11,12 +11,19 @@ import Foundation
 import UIKit
 import NumSwift
 
-public extension Float {
+public extension Tensor.Scalar {
   var bytes: [UInt8] {
     withUnsafeBytes(of: self, Array.init)
   }
 }
 
+#if arch(arm64)
+public extension Float16 {
+  var bytes: [UInt8] {
+    withUnsafeBytes(of: self, Array.init)
+  }
+}
+#endif
 
 public extension UIImage {
   
@@ -32,7 +39,7 @@ public extension UIImage {
     
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
-    var grayArray: [Float] = []
+    var grayArray: [Tensor.Scalar] = []
 
     for y in 0..<Int(self.size.height) {
       for x in 0..<Int(self.size.width) {
@@ -40,9 +47,9 @@ public extension UIImage {
         
         let pixelInfo: Int = ((Int(self.size.width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        let r = Float(data[pixelInfo])
-        let g = Float(data[pixelInfo + 1])
-        let b = Float(data[pixelInfo + 2])
+        let r = Tensor.Scalar(data[pixelInfo])
+        let g = Tensor.Scalar(data[pixelInfo + 1])
+        let b = Tensor.Scalar(data[pixelInfo + 2])
         
         var gray = (r + g + b) / 3
 
@@ -64,10 +71,10 @@ public extension UIImage {
     
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
-    var rArray: [Float] = []
-    var gArray: [Float] = []
-    var bArray: [Float] = []
-    var aArray: [Float] = []
+    var rArray: [Tensor.Scalar] = []
+    var gArray: [Tensor.Scalar] = []
+    var bArray: [Tensor.Scalar] = []
+    var aArray: [Tensor.Scalar] = []
 
     for y in 0..<Int(self.size.height) {
       for x in 0..<Int(self.size.width) {
@@ -75,10 +82,10 @@ public extension UIImage {
         
         let pixelInfo: Int = ((Int(self.size.width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        var r = Float(data[pixelInfo])
-        var g = Float(data[pixelInfo + 1])
-        var b = Float(data[pixelInfo + 2])
-        var a = Float(data[pixelInfo + 3])
+        var r = Tensor.Scalar(data[pixelInfo])
+        var g = Tensor.Scalar(data[pixelInfo + 1])
+        var b = Tensor.Scalar(data[pixelInfo + 2])
+        var a = Tensor.Scalar(data[pixelInfo + 3])
 
         if zeroCenter {
           r = (r - 127.5) / 127.5
@@ -110,9 +117,9 @@ public extension UIImage {
     
     let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
     
-    var rArray: [Float] = []
-    var gArray: [Float] = []
-    var bArray: [Float] = []
+    var rArray: [Tensor.Scalar] = []
+    var gArray: [Tensor.Scalar] = []
+    var bArray: [Tensor.Scalar] = []
     
     for y in 0..<Int(self.size.height) {
       for x in 0..<Int(self.size.width) {
@@ -120,9 +127,9 @@ public extension UIImage {
         
         let pixelInfo: Int = ((Int(self.size.width) * Int(pos.y) * 4) + Int(pos.x) * 4)
         
-        var r = Float(data[pixelInfo])
-        var g = Float(data[pixelInfo + 1])
-        var b = Float(data[pixelInfo + 2])
+        var r = Tensor.Scalar(data[pixelInfo])
+        var g = Tensor.Scalar(data[pixelInfo + 1])
+        var b = Tensor.Scalar(data[pixelInfo + 2])
         
         if zeroCenter {
           r = (r - 127.5) / 127.5
@@ -168,7 +175,7 @@ public extension UIImage {
     return returnPixels
   }
   
-  static func from(_ pixels: [Float], size: (Int, Int)) -> UIImage? {
+  static func from(_ pixels: [Tensor.Scalar], size: (Int, Int)) -> UIImage? {
     let data: [UInt8] = pixels.map { UInt8(ceil(Double($0) * 255)) }
     
     guard data.count >= 8 else {

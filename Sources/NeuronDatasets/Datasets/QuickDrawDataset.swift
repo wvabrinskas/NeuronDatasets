@@ -22,7 +22,7 @@ public class QuickDrawDataset: BaseDataset, Logger {
   private var zeroCentered: Bool
   
   public init(objectToGet: QuickDrawObject,
-              overrideLabel: [Float] = [],
+              overrideLabel: [Tensor.Scalar] = [],
               trainingCount: Int = 1000,
               validationCount: Int = 1000,
               zeroCentered: Bool = false,
@@ -51,9 +51,9 @@ public class QuickDrawDataset: BaseDataset, Logger {
       let download = try await URLSession.shared.data(for: urlRequest)
       let data = download.0
       
-      let scale: Float = zeroCentered ? 1 : 255
+      let scale: Tensor.Scalar = zeroCentered ? 1 : 255
       
-      var result: [Float] = read(data: data, offset: 0x001a, scaleBy: scale)
+      var result: [Tensor.Scalar] = read(data: data, offset: 0x001a, scaleBy: scale)
       
       if zeroCentered {
         result = result.map { ($0 - 127.5) / 127.5 }

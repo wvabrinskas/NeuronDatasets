@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Neuron
 
 public enum QuickDrawObject: String, CaseIterable {
   case aircraftCarrier = "aircraft carrier",
@@ -361,8 +362,8 @@ public enum QuickDrawObject: String, CaseIterable {
     Bundle.main.path(forResource: rawValue, ofType: "npy")
   }
   
-  func label() -> [Float] {
-    var totalLabels: [Float] = [Float](repeating: 0, count: Self.allCases.count)
+  func label() -> [Tensor.Scalar] {
+    var totalLabels: [Tensor.Scalar] = [Tensor.Scalar](repeating: 0, count: Self.allCases.count)
     for i in 0..<Self.allCases.count {
       totalLabels[i] = Self.allCases[i] == self ? 1 : 0
     }
