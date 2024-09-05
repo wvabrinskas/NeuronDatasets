@@ -11,7 +11,48 @@ extension XCTestCase {
   }
 }
 
+private final class TestDataset: BaseDataset, DatasetMergable {
+  let initialTrainingCount = 100
+  let initialValidationCount = 50
+  
+  func merge(with dataset: TestDataset) {
+    super.merge(with: dataset)
+  }
+  
+  @discardableResult
+  public override func build() async -> DatasetData {
+    var training: [DatasetModel] = []
+    var validation: [DatasetModel] = []
+    
+    for i in 0..<initialTrainingCount {
+      training.append(.init(data: .init(), label: .init()))
+    }
+    
+    for i in 0..<initialValidationCount {
+      validation.append(.init(data: .init(), label: .init()))
+    }
+    
+    data = (training, validation)
+    
+    return await super.build()
+  }
+}
+
+
 final class NeuronDatasetsTests: XCTestCase {
+  
+  func test_merge() async {
+    let test1 = TestDataset(unitDataSize: .init(array: []))
+    let test2 = TestDataset(unitDataSize: .init(array: []))
+    
+    await test1.build()
+    await test2.build()
+    
+    test1.merge(with: test2)
+    
+    XCTAssertEqual(test1.data.training.count, test1.initialTrainingCount + test2.initialTrainingCount)
+    XCTAssertEqual(test1.data.val.count, test1.initialValidationCount + test2.initialValidationCount)
+  }
   
   func test_trim() async {
     let trim = 10

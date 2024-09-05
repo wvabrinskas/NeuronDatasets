@@ -4,7 +4,7 @@ import Combine
 import Neuron
  
 /// Creates an MNIST Dataset object to be used by a netowrk. The MNIST dataset is a set of 60000 grayscale hand-drawn numbers from 0-9.
-public class MNIST: BaseDataset {
+public class MNIST: BaseDataset, DatasetMergable {
   private let mnistSize: [Int] = [28,28,1]
   private var numToGet: Int?
   private var zeroCentered: Bool
@@ -73,6 +73,10 @@ public class MNIST: BaseDataset {
     return await build()
   }
   
+  public func merge(with dataset: MNIST) {
+    super.merge(with: dataset)
+  }
+  
   /// Build with support for Combine
   public override func build() {
     Task {
@@ -82,6 +86,7 @@ public class MNIST: BaseDataset {
   
   /// Build with async/await support
   /// - Returns: downloaded dataset
+  @discardableResult
   public override func build() async -> DatasetData {
     guard complete == false else {
       print("MNIST has already been loaded")
