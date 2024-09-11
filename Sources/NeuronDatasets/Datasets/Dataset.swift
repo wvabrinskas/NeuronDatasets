@@ -8,6 +8,7 @@
 import Combine
 import Foundation
 import Neuron
+import Logger
 
 public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 
@@ -76,7 +77,13 @@ public protocol Dataset: AnyObject {
   func trim(to: Int)
 }
 
-open class BaseDataset: Dataset {
+public protocol DatasetMergable: Dataset {
+  func merge(with dataset: Self)
+}
+
+open class BaseDataset: Dataset, Logger {
+  public var logLevel: LogLevel = .low
+  
   public var unitDataSize: Neuron.TensorSize = .init()
   public var data: DatasetData = ([], []) {
     didSet {
@@ -102,12 +109,14 @@ open class BaseDataset: Dataset {
   public func build() async -> DatasetData {
     // override
     trim()
+    randomize()
     return data
   }
   
   public func build() {
     // override
     trim()
+    randomize()
   }
   
   /// Trims the dataset to set amount
@@ -146,6 +155,20 @@ open class BaseDataset: Dataset {
     let bitmap = bitmap(path: path, offset: offset)
     let result = bitmap.map { T($0) / scaleBy }
     return result
+  }
+  
+  func merge(with dataset: BaseDataset) {
+    guard dataset.unitDataSize == unitDataSize else { return }
+    
+    data.training.append(contentsOf: dataset.data.training)
+    data.val.append(contentsOf: dataset.data.val)
+
+    randomize()
+  }
+  
+  func randomize() {
+    data.training = data.training.shuffled()
+    data.val = data.val.shuffled()
   }
   
   private func trim() {

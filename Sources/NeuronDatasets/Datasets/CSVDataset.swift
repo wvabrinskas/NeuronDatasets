@@ -26,7 +26,7 @@ public typealias Header = Hashable & CSVSupporting
 /// Creates a dataset from a CSV file.
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
-public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDataset {
+public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
 
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
@@ -52,9 +52,7 @@ public final class CSVDataset<K: Header>: BaseDataset, Logger, RNNSupportedDatas
       self.oneHot = oneHot
     }
   }
-  
-  public var logLevel: LogLevel = .high
-  
+    
   private let csvUrl: URL
   private let parameters: Parameters
   private let vectorizer = Vectorizer<String>()

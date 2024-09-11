@@ -17,7 +17,8 @@ import UIKit
 #endif
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
-public class ImageDataset: BaseDataset, Logger {
+public class ImageDataset: BaseDataset, DatasetMergable {
+
   public typealias ImageSorting = (URL, URL) -> Bool
   public enum ImageDatasetError: Error, LocalizedError {
     case imageDepthError
@@ -44,9 +45,7 @@ public class ImageDataset: BaseDataset, Logger {
       }
     }
   }
-  
-  public var logLevel: LogLevel = .low
-  
+    
   private let imagesDirectory: String
   private let zeroCentered: Bool
   private let maxCount: Int
@@ -70,7 +69,7 @@ public class ImageDataset: BaseDataset, Logger {
               labels: URL? = nil,
               imageSorting: ImageSorting? = nil,
               imageSize: CGSize,
-              label: [Tensor.Scalar],
+              label: [Tensor.Scalar] = [],
               imageDepth: ImageDepth,
               maxCount: Int = 0,
               validationSplitPercent: Tensor.Scalar = 0,
@@ -103,6 +102,10 @@ public class ImageDataset: BaseDataset, Logger {
   public override func build() {
     readDirectory()
     super.build()
+  }
+  
+  public func merge(with dataset: ImageDataset) {
+    super.merge(with: dataset)
   }
   
   private func getImageTensor(for url: String) -> Tensor {
