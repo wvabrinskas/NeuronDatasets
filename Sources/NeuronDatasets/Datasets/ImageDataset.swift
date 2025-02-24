@@ -18,7 +18,17 @@ import UIKit
 
 /// Creates an RGB dataset from a directory of images. Alpha is removed.
 public class ImageDataset: BaseDataset, DatasetMergable {
-
+  
+  public struct ImageModel {
+    var images: URL
+    var labels: URL?
+    
+    public init(images: URL, labels: URL) {
+      self.images = images
+      self.labels = labels
+    }
+  }
+  
   public typealias ImageSorting = (URL, URL) -> Bool
   public enum ImageDatasetError: Error, LocalizedError {
     case imageDepthError
@@ -45,15 +55,26 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       }
     }
   }
+  
+  enum DataType {
+    case training, validation
+  }
+  
+  public enum ValidationType {
+    case auto
+    case fromUrl(ImageModel)
+  }
     
-  private let imagesDirectory: String
+  private let trainingData: ImageModel
   private let zeroCentered: Bool
   private let maxCount: Int
-  private let validationSplitPercent: Tensor.Scalar
   private let imageDepth: ImageDepth
-  private let labels: URL?
   private let imageSorting: ImageSorting?
   
+  private var autoValidationData: [DatasetModel] = []
+  private var validationData: ImageModel? = nil
+  private var autoValidation: Bool = false
+
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
   ///   - imagesDirectory: The directory of the images to load. All images should be the same size.
@@ -65,24 +86,28 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   ///   - maxCount: Max count to add to the dataset. Could be useful to save memory. Setting it to 0 will use the whole dataset.
   ///   - validationSplitPercent: Number between 0 and 1. The lower the number the more likely it is the image will be added to the training dataset otherwise it'll be added to the validation dataset.
   ///   - zeroCentered: Format image RGB values between -1 and 1. Otherwise it'll be normalized to between 0 and 1.
-  public init(imagesDirectory: URL,
-              labels: URL? = nil,
+  public init(trainingData: ImageModel,
+              validation: ValidationType,
               imageSorting: ImageSorting? = nil,
               imageSize: CGSize,
               label: [Tensor.Scalar] = [],
               imageDepth: ImageDepth,
               maxCount: Int = 0,
-              validationSplitPercent: Tensor.Scalar = 0,
               zeroCentered: Bool = false) {
 
-    self.imagesDirectory = imagesDirectory.path
     self.zeroCentered = zeroCentered
     self.maxCount = maxCount
-    self.validationSplitPercent = validationSplitPercent
     self.imageDepth = imageDepth
-    self.labels = labels
     self.imageSorting = imageSorting
+    self.trainingData = trainingData
     
+    switch validation {
+    case .auto:
+      self.autoValidation = true
+    case .fromUrl(let imageData):
+      self.validationData = imageData
+    }
+        
     super.init(unitDataSize: TensorSize(rows: Int(imageSize.width),
                                         columns: Int(imageSize.height),
                                         depth: imageDepth.expectedDepth),
@@ -94,18 +119,38 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       print("ImageDataset has already been loaded")
       return self.data
     }
-    
-    readDirectory()
+
+    buildData()
+
     return await super.build()
   }
   
   public override func build() {
-    readDirectory()
+    buildData()
+    
     super.build()
   }
   
   public func merge(with dataset: ImageDataset) {
     super.merge(with: dataset)
+  }
+  
+  private func buildData() {
+    guard complete == false else {
+      print("ImageDataset has already been loaded")
+      return
+    }
+    
+    let trainingSamples = readDirectory(type: .training)
+    let validationSamples = autoValidation ? autoValidationData : readDirectory(type: .validation)
+    
+    if validationSamples.isEmpty {
+      
+      fatalError("Validation set can not be empty. Please check your dataset")
+    }
+
+    data = (trainingSamples, validationSamples)
+    complete = true
   }
   
   private func getImageTensor(for url: String) -> Tensor {
@@ -140,8 +185,8 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     return Tensor()
   }
   
-  internal func getLabelsIfNeeded() throws -> [Tensor]? {
-    guard let labels else { return nil }
+  internal func getLabelsIfNeeded(type: DataType) throws -> [Tensor]? {
+    guard let labels = type == .training ? trainingData.labels : type == .validation ? validationData?.labels : nil else { return nil }
     
     let content = try String(contentsOfFile: labels.absoluteString).trimmingCharacters(in: .decimalDigits.inverted)
     let parsedCSV = content.components(separatedBy: ",").compactMap { Tensor.Scalar($0) }
@@ -158,15 +203,12 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     
     return labelsToReturn
   }
- 
-  private func readDirectory() {
-    guard complete == false else {
-      print("ImageDataset has already been loaded")
-      return
-    }
-    
+  
+  private func readDirectory(type: DataType) -> [DatasetModel] {
+    guard let url = type == .training ? trainingData.images : type == .validation ? validationData?.images : nil else { return [] }
+    guard let labels = type == .training ? trainingData.labels : type == .validation ? validationData?.labels : nil else { return [] }
+
     do {
-      guard let url = URL(string: imagesDirectory) else { return }
       
       var contents = try FileManager.default.contentsOfDirectory(at: url,
                                                                  includingPropertiesForKeys: nil,
@@ -176,12 +218,13 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         contents = contents.sorted(by: imageSorting)
       }
       
-      var training: [DatasetModel] = []
-      var validation: [DatasetModel] = []
+      var samples: [DatasetModel] = []
       
       let maximum = maxCount == 0 ? contents.count : maxCount
       
-      let labelsFromUrl = try getLabelsIfNeeded()
+      let labelsFromUrl = try getLabelsIfNeeded(type: type)
+      
+      var previousLabel: Tensor = .init()
       
       for index in 0..<maximum {
         let imageUrl = contents[index]
@@ -190,20 +233,27 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         precondition(imageData.shape == unitDataSize.asArray)
         
         let label = labelsFromUrl?[index] ?? Tensor(overrideLabel)
-        if self.labels != nil, labelsFromUrl?[safe: index] == nil {
+        
+        if labelsFromUrl?[safe: index] == nil {
           fatalError("Label is missing for: \(imageUrl)")
         }
-        if Tensor.Scalar.random(in: 0...1) >= validationSplitPercent {
-          training.append(DatasetModel(data: imageData, label: label))
+        
+        let sample = DatasetModel(data: imageData, label: label)
+        
+        if autoValidation &&
+           previousLabel != label {
+          autoValidationData.append(sample)
         } else {
-          validation.append(DatasetModel(data: imageData, label: label))
+          samples.append(sample)
         }
+        
+        previousLabel = label
       }
       
-      self.data = (training, validation)
-      complete = true
+      return samples
     } catch {
       print(error.localizedDescription)
+      return []
     }
   }
 }
