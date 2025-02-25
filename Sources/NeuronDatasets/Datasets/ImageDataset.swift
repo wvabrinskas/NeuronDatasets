@@ -23,7 +23,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     var images: URL
     var labels: URL?
     
-    public init(images: URL, labels: URL) {
+    public init(images: URL, labels: URL?) {
       self.images = images
       self.labels = labels
     }
@@ -145,7 +145,6 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     let validationSamples = autoValidation ? autoValidationData : readDirectory(type: .validation)
     
     if validationSamples.isEmpty {
-      
       fatalError("Validation set can not be empty. Please check your dataset")
     }
 
@@ -206,7 +205,6 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   
   private func readDirectory(type: DataType) -> [DatasetModel] {
     guard let url = type == .training ? trainingData.images : type == .validation ? validationData?.images : nil else { return [] }
-    guard let labels = type == .training ? trainingData.labels : type == .validation ? validationData?.labels : nil else { return [] }
 
     do {
       
@@ -224,8 +222,9 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       
       let labelsFromUrl = try getLabelsIfNeeded(type: type)
       
-      var previousLabel: Tensor = .init()
-      
+      var labelsAdded: Set<UInt> = []
+      var labelsAddedToData: Set<UInt> = []
+
       for index in 0..<maximum {
         let imageUrl = contents[index]
         let imageData = getImageTensor(for: imageUrl.absoluteString)
@@ -239,15 +238,25 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         }
         
         let sample = DatasetModel(data: imageData, label: label)
-        
-        if autoValidation &&
-           previousLabel != label {
-          autoValidationData.append(sample)
+              
+        if autoValidation {
+          let labelValue = label.value.flatten().indexOfMax.0
+
+          if type != .validation,
+             overrideLabel.isEmpty == false,
+             labelsAddedToData.contains(labelValue),
+             labelsAdded.contains(labelValue) == false { // only take a validation sample if there's at least one in the training data already
+            
+            autoValidationData.append(sample) // appends one sample from the training data to the validation set
+            labelsAdded.insert(labelValue)
+          } else {
+            labelsAddedToData.insert(labelValue)
+            samples.append(sample)
+          }
         } else {
           samples.append(sample)
         }
-        
-        previousLabel = label
+       
       }
       
       return samples
