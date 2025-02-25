@@ -240,15 +240,13 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         
         let sample = DatasetModel(data: imageData, label: label)
               
-        if autoValidation {
+        if autoValidation, type != .validation, overrideLabel.isEmpty {
           let labelValue = label.value.flatten().indexOfMax.0
-
-          if type != .validation,
-             overrideLabel.isEmpty,
-             Float.random(in: 0...1) < validationSplit,
+          
+          if Float.randomIn(0...1) < validationSplit,
              labelsAddedToData.contains(labelValue) { // only take a validation sample if there's at least one in the training data already
             
-            autoValidationData.append(sample) // appends one sample from the training data to the validation set
+            autoValidationData.append(sample) // appends sample from the training data to the validation set
           } else {
             labelsAddedToData.insert(labelValue)
             samples.append(sample)
