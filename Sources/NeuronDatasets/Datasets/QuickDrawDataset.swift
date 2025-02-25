@@ -16,7 +16,8 @@ import Neuron
 public class QuickDrawDataset: BaseDataset {
   
   private let trainingCount: Int
-  private let validationCount: Int
+  @Percentage
+  private var validationSplit: Float
   private var objectsToGet: [QuickDrawObject]
   private var zeroCentered: Bool
   private var useAllClasses: Bool
@@ -35,11 +36,11 @@ public class QuickDrawDataset: BaseDataset {
               overrideLabel: [Tensor.Scalar] = [],
               useAllClasses: Bool = true,
               trainingCount: Int = 1000,
-              validationCount: Int = 1000,
+              validationSplit: Float = 0.2,
               zeroCentered: Bool = false,
               logLevel: LogLevel = .none) {
     self.trainingCount = trainingCount
-    self.validationCount = validationCount
+    self.validationSplit = validationSplit
     self.objectsToGet = objectsToGet
     self.zeroCentered = zeroCentered
     self.useAllClasses = useAllClasses
@@ -90,11 +91,19 @@ public class QuickDrawDataset: BaseDataset {
         
         self.log(type: .success, priority: .low, message: "Successfully donwloaded dataset - \(shaped.count) samples")
 
-        let training = Array(shaped[0..<trainingCount]).map { DatasetModel(data: Tensor($0),
-                                                                           label: Tensor(label)) }
+        let all = shaped.map { DatasetModel(data: Tensor($0),
+                                                 label: Tensor(label)) }
         
-        let validation = Array(shaped[trainingCount..<trainingCount + validationCount]).map { DatasetModel(data: Tensor($0),
-                                                                                                           label: Tensor(label)) }
+        var validation: [DatasetModel] = []
+        var training: [DatasetModel] = []
+        
+        all.forEach { model in
+          if Float.randomIn(0...1) < self.validationSplit {
+            validation.append(model)
+          } else {
+            training.append(model)
+          }
+        }
         
         self.data.training.append(contentsOf: training)
         self.data.val.append(contentsOf: validation)

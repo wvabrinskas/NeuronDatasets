@@ -74,6 +74,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   private var autoValidationData: [DatasetModel] = []
   private var validationData: ImageModel? = nil
   private var autoValidation: Bool = false
+  @Percentage
   private var validationSplit: Float = 0.0
 
   /// Initializes an RGB ImageDataset. This call throws an error if the
@@ -104,7 +105,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     
     switch validation {
     case .auto(let split):
-      validationSplit = max(0.0, min(split, 1.0))
+      validationSplit = split
       self.autoValidation = true
     case .fromUrl(let imageData):
       self.validationData = imageData

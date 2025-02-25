@@ -10,6 +10,25 @@ import Foundation
 import Neuron
 import Logger
 
+@propertyWrapper
+public struct Percentage<Value: FloatingPoint> {
+  private var value: Value
+  
+  public init(wrappedValue: Value) {
+    self.value = wrappedValue
+  }
+  
+  public var wrappedValue: Value {
+    get {
+      return max(min(value, 1), 0)
+    }
+    set {
+      value = max(min(newValue, 1), 0)
+    }
+  }
+}
+
+
 public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 
 /// The protocol that defines how to build a Neuron compatible dataset for training.
