@@ -61,7 +61,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   }
   
   public enum ValidationType {
-    case auto
+    case auto(Float)
     case fromUrl(ImageModel)
   }
     
@@ -74,6 +74,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   private var autoValidationData: [DatasetModel] = []
   private var validationData: ImageModel? = nil
   private var autoValidation: Bool = false
+  private var validationSplit: Float = 0.0
 
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
@@ -102,7 +103,8 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     self.trainingData = trainingData
     
     switch validation {
-    case .auto:
+    case .auto(let split):
+      validationSplit = max(0.0, min(split, 1.0))
       self.autoValidation = true
     case .fromUrl(let imageData):
       self.validationData = imageData
@@ -222,7 +224,6 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       
       let labelsFromUrl = try getLabelsIfNeeded(type: type)
       
-      var labelsAdded: Set<UInt> = []
       var labelsAddedToData: Set<UInt> = []
 
       for index in 0..<maximum {
@@ -243,12 +244,11 @@ public class ImageDataset: BaseDataset, DatasetMergable {
           let labelValue = label.value.flatten().indexOfMax.0
 
           if type != .validation,
-             overrideLabel.isEmpty == false,
-             labelsAddedToData.contains(labelValue),
-             labelsAdded.contains(labelValue) == false { // only take a validation sample if there's at least one in the training data already
+             overrideLabel.isEmpty,
+             Float.random(in: 0...1) < validationSplit,
+             labelsAddedToData.contains(labelValue) { // only take a validation sample if there's at least one in the training data already
             
             autoValidationData.append(sample) // appends one sample from the training data to the validation set
-            labelsAdded.insert(labelValue)
           } else {
             labelsAddedToData.insert(labelValue)
             samples.append(sample)
