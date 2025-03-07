@@ -1,0 +1,29 @@
+{
+  "configurations" : [
+    {
+      "id" : "37660971-1A11-4F5A-8011-4368CD7FC6D9",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "environmentVariableEntries" : [
+      {
+        "key" : "CI",
+        "value" : "true"
+      }
+    ]
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "NeuronDatasetsTests",
+        "name" : "NeuronDatasetsTests"
+      }
+    }
+  ],
+  "version" : 1
+}

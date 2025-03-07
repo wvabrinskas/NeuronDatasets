@@ -10,6 +10,25 @@ import Foundation
 import Neuron
 import Logger
 
+@propertyWrapper
+public struct Percentage<Value: FloatingPoint> {
+  private var value: Value
+  
+  public init(wrappedValue: Value) {
+    self.value = wrappedValue
+  }
+  
+  public var wrappedValue: Value {
+    get {
+      return max(min(value, 1), 0)
+    }
+    set {
+      value = max(min(newValue, 1), 0)
+    }
+  }
+}
+
+
 public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 
 /// The protocol that defines how to build a Neuron compatible dataset for training.
@@ -28,6 +47,9 @@ public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 ///                    logLevel: LogLevel = .none)
 /// ```
 public protocol Dataset: AnyObject {
+  /// Seeds for the randomizer that feeds the auto validation builder
+  var randomSeeds: [UInt64] { get set }
+  /// Tensor size of the data
   var unitDataSize: TensorSize { get }
   /// The resulting dataset
   var data: DatasetData { get }
@@ -82,6 +104,10 @@ public protocol DatasetMergable: Dataset {
 }
 
 open class BaseDataset: Dataset, Logger {
+  public var randomizationSeed: UInt64 { UInt64.random(in: 0..<UInt64.max) }
+  
+  public var randomSeeds: [UInt64] = []
+  
   public var logLevel: LogLevel = .low
   
   public var unitDataSize: Neuron.TensorSize = .init()

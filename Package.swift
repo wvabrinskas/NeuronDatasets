@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -26,7 +26,6 @@ let package = Package(
         .target(
             name: "NeuronDatasets",
             dependencies: ["Neuron"],
-            exclude: [ "bin" ],
             resources: [ .process("Resources") ]),
         .testTarget(
             name: "NeuronDatasetsTests",

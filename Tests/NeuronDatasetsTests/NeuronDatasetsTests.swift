@@ -24,11 +24,11 @@ private final class TestDataset: BaseDataset, DatasetMergable {
     var training: [DatasetModel] = []
     var validation: [DatasetModel] = []
     
-    for i in 0..<initialTrainingCount {
+    for _ in 0..<initialTrainingCount {
       training.append(.init(data: .init(), label: .init()))
     }
     
-    for i in 0..<initialValidationCount {
+    for _ in 0..<initialValidationCount {
       validation.append(.init(data: .init(), label: .init()))
     }
     
@@ -40,6 +40,14 @@ private final class TestDataset: BaseDataset, DatasetMergable {
 
 
 final class NeuronDatasetsTests: XCTestCase {
+
+  func test_randomSeed() {
+    let seed: UInt64 = 1234
+    let firstRandom = Float.randomIn(0...1, seed: seed).num
+    let secondRandom =  Float.randomIn(0...1, seed: seed).num
+    
+    XCTAssertEqual(firstRandom, secondRandom)
+  }
   
   func test_merge() async {
     let test1 = TestDataset(unitDataSize: .init(array: []))
@@ -164,7 +172,10 @@ final class NeuronDatasetsTests: XCTestCase {
   func testImageDatasetDepthCheck() {
     ImageDataset.ImageDepth.allCases.forEach { depth in
       let imageSize = CGSize(width: 20, height: 20)
-      let dataset = ImageDataset(imagesDirectory: URL(string: "https://images.com")!,
+      
+      let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
+                                                                       labels: nil),
+                                 validation: .auto(0.2),
                                  imageSize: imageSize,
                                  label: [1.0],
                                  imageDepth: depth)
@@ -180,14 +191,14 @@ final class NeuronDatasetsTests: XCTestCase {
       let imageSize = CGSize(width: 20, height: 20)
       let imageLabels = URL(string: Bundle.module.path(forResource: "test-image-labels", ofType: "csv")!)
     
-      let dataset = ImageDataset(imagesDirectory: URL(string: "https://images.com")!,
-                                 labels: imageLabels,
+      let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
+                                                                       labels: imageLabels),
+                                 validation: .auto(0.2),
                                  imageSize: imageSize,
-                                 label: [1.0],
                                  imageDepth: depth)
       
       do {
-        let labels = try dataset.getLabelsIfNeeded()
+        let labels = try dataset.getLabelsIfNeeded(type: .training)
         let expectedLabels: [[Tensor.Scalar]] = [[1,0,0,0,0],
                                          [1,0,0,0,0],
                                          [1,0,0,0,0],
@@ -290,40 +301,6 @@ final class NeuronDatasetsTests: XCTestCase {
       return
     }
     
-//    enum TestHeaders: String, CSVSupporting {
-//      case username = "user_name"
-//      case userLocation = "user_location"
-//      case userDescription = "user_description"
-//      case userCreated = "user_created"
-//      case userFollowers = "user_followers"
-//      case userFriends = "user_friends"
-//      case userFavourites = "user_favourites"
-//      case userVerified = "user_verified"
-//      case date
-//      case text
-//      case hashtags
-//      case source
-//      case isRetweet = "isRetweet"
-//      //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
-//      
-//      var type: CSVType { .sentence }
-//      
-//      func order() -> [TestHeaders] {
-//        Self.allCases
-//      }
-//      
-//      func maxLengthOfItem() -> Int {
-//        switch self {
-//        case .text:
-//          return 5 // word count
-//        default:
-//          return 1
-//        }
-//      }
-//    }
-//    
-//    let path = Bundle.module.path(forResource: "sentenceTweetsSmallTest", ofType: "csv")
-    
     enum TestHeaders: String, CSVSupporting {
       case id = "Id"
       case name = "Name"
@@ -371,19 +348,12 @@ final class NeuronDatasetsTests: XCTestCase {
                   optimizerParameters: RNN.OptimizerParameters(learningRate: 0.0002,
                                                                metricsReporter: reporter),
                   lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
-                                                        inputUnits: 100))// {
-    //      [
-    //       Dense(64),
-    //       ReLu(),
-    //       Dropout(0.5),
-    //       Dense(vocabSize),
-    //       Softmax()]
-    //    }
-    //
+                                                        inputUnits: 100))
+    
     reporter.receive = { metrics in
       let accuracy = metrics[.accuracy] ?? 0
       let loss = metrics[.loss] ?? 0
-     // print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
+      print("training -> ", "loss: ", loss, "accuracy: ", accuracy)
     }
     
     rnn.onEpochCompleted = {
