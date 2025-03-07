@@ -227,6 +227,8 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       
       var labelsAddedToData: Set<UInt> = []
 
+      var runningSeeds: [UInt64] = []
+      
       for index in 0..<maximum {
         let imageUrl = contents[index]
         let imageData = getImageTensor(for: imageUrl.absoluteString)
@@ -244,19 +246,25 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         if autoValidation, type != .validation, overrideLabel.isEmpty {
           let labelValue = label.value.flatten().indexOfMax.0
           
-          if Float.randomIn(0...1, seed: randomizationSeed).num < validationSplit,
+          let random = Float.randomIn(0...1, seed: randomSeeds[safe: index, randomizationSeed])
+          runningSeeds.append(random.seed)
+
+          if random.num < validationSplit,
              labelsAddedToData.contains(labelValue) { // only take a validation sample if there's at least one in the training data already
             
-            autoValidationData.append(sample) // appends sample from the training data to the validation set
+             autoValidationData.append(sample) // appends sample from the training data to the validation set
           } else {
             labelsAddedToData.insert(labelValue)
             samples.append(sample)
           }
+      
         } else {
           samples.append(sample)
         }
        
       }
+      
+      randomSeeds = runningSeeds
       
       return samples
     } catch {

@@ -41,6 +41,14 @@ private final class TestDataset: BaseDataset, DatasetMergable {
 
 final class NeuronDatasetsTests: XCTestCase {
 
+  func test_randomSeed() {
+    let seed: UInt64 = 1234
+    let firstRandom = Float.randomIn(0...1, seed: seed).num
+    let secondRandom =  Float.randomIn(0...1, seed: seed).num
+    
+    XCTAssertEqual(firstRandom, secondRandom)
+  }
+  
   func test_merge() async {
     let test1 = TestDataset(unitDataSize: .init(array: []))
     let test2 = TestDataset(unitDataSize: .init(array: []))

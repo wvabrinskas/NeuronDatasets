@@ -101,7 +101,9 @@ public protocol DatasetMergable: Dataset {
 }
 
 open class BaseDataset: Dataset, Logger {
-  public var randomizationSeed = UInt64.random(in: 0..<UInt64.max)
+  public var randomizationSeed: UInt64 { UInt64.random(in: 0..<UInt64.max) }
+  
+  public var randomSeeds: [UInt64] = []
   
   public var logLevel: LogLevel = .low
   

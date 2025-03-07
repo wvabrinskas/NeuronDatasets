@@ -52,7 +52,8 @@ public class QuickDrawDataset: BaseDataset {
   }
   
   public override func build() async -> DatasetData {
-    
+    var runningSeeds: [UInt64] = []
+
     for i in 0..<objectsToGet.count {
       let objectToGet = objectsToGet[i]
       
@@ -97,12 +98,18 @@ public class QuickDrawDataset: BaseDataset {
         var validation: [DatasetModel] = []
         var training: [DatasetModel] = []
         
+        var j = runningSeeds.count
         all.forEach { model in
-          if Float.randomIn(0...1, seed: randomizationSeed).num < self.validationSplit {
+          let random = Float.randomIn(0...1, seed: randomSeeds[safe: j, randomizationSeed])
+        
+          if random.num < self.validationSplit {
             validation.append(model)
           } else {
             training.append(model)
           }
+          
+          runningSeeds.append(random.seed)
+          j += 1
         }
         
         data.training.append(contentsOf: training)
@@ -112,6 +119,8 @@ public class QuickDrawDataset: BaseDataset {
         log(type: .error, priority: .alwaysShow, message: "Error getting dataset: \(error.localizedDescription)")
         print(error.localizedDescription)
       }
+      
+      randomSeeds = runningSeeds
     }
         
     return await super.build()

@@ -7,32 +7,15 @@
 
 import Foundation
 
-extension Bundle {
-  static var isRunningTests : Bool {
-    get {
-      return NSClassFromString("XCTest") != nil
-    }
-  }
-}
-
-
 extension Float {
-  static var randomSeed: UInt64 = 1234
  
   static func randomIn(_ range: ClosedRange<Float>, seed: UInt64 = .random(in: 0...UInt64.max)) -> (num: Float, seed: UInt64) {
-    let seedToUse: UInt64 = if Bundle.isRunningTests {
-      randomSeed
-    } else {
-      seed
-    }
-
-    var generator = SeededRandomNumberGenerator(seed: seedToUse)
+    var generator = SeededRandomNumberGenerator(seed: seed)
     
     return (Float.random(in: range, using: &generator), seed)
   }
 }
 
-// A custom random number generator that uses a seed
 // A custom random number generator that uses a seed
 struct SeededRandomNumberGenerator: RandomNumberGenerator {
     private var state: UInt64
