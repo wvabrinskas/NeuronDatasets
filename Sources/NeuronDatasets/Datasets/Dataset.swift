@@ -47,6 +47,9 @@ public typealias DatasetData = (training: [DatasetModel], val: [DatasetModel])
 ///                    logLevel: LogLevel = .none)
 /// ```
 public protocol Dataset: AnyObject {
+  /// Seeds for the randomizer that feeds the auto validation builder
+  var randomSeeds: [UInt64] { get set }
+  /// Tensor size of the data
   var unitDataSize: TensorSize { get }
   /// The resulting dataset
   var data: DatasetData { get }
