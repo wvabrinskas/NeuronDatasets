@@ -40,7 +40,7 @@ private final class TestDataset: BaseDataset, DatasetMergable {
 
 
 final class NeuronDatasetsTests: XCTestCase {
-  
+
   func test_merge() async {
     let test1 = TestDataset(unitDataSize: .init(array: []))
     let test2 = TestDataset(unitDataSize: .init(array: []))
@@ -167,7 +167,7 @@ final class NeuronDatasetsTests: XCTestCase {
       
       let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
                                                                        labels: nil),
-                                 validation: .auto,
+                                 validation: .auto(0.2),
                                  imageSize: imageSize,
                                  label: [1.0],
                                  imageDepth: depth)
@@ -185,7 +185,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
       let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
                                                                        labels: imageLabels),
-                                 validation: .auto,
+                                 validation: .auto(0.2),
                                  imageSize: imageSize,
                                  imageDepth: depth)
       
