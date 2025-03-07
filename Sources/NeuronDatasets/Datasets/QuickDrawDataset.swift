@@ -29,7 +29,7 @@ public class QuickDrawDataset: BaseDataset {
   ///   - overrideLabel: Label to apply to every object
   ///   - useAllClasses: When set to `true` this will give each object a label with a one hot vector in its position in `QuickDrawObject`. When `false` the label will be based on the number of input objects to get. Default: `true`
   ///   - trainingCount: Total number of objects per `objectsToGet` to add to the training set
-  ///   - validationCount: Total number of objects per `objectsToGet` to add to the validation set
+  ///   - validationSplit: A number between 0 and 1 that splits the training data set by that percentage into the validation set.
   ///   - zeroCentered: Whether or not to zero center the dataset values. 0...1 or -1...1
   ///   - logLevel: The serverity level of logging.
   public init(objectsToGet: QuickDrawObject...,
@@ -74,14 +74,14 @@ public class QuickDrawDataset: BaseDataset {
       
       do {
         let urlRequest = URLRequest(url: url)
-        self.log(type: .message, priority: .low, message: "Downloading dataset for \(objectToGet.rawValue)")
+        log(type: .message, priority: .low, message: "Downloading dataset for \(objectToGet.rawValue)")
                  
         let download = try await URLSession.shared.data(for: urlRequest)
-        let data = download.0
+        let downloadedData = download.0
         
         let scale: Tensor.Scalar = zeroCentered ? 1 : 255
         
-        var result: [Tensor.Scalar] = read(data: data, offset: 0x001a, scaleBy: scale)
+        var result: [Tensor.Scalar] = read(data: downloadedData, offset: 0x001a, scaleBy: scale)
         
         if zeroCentered {
           result = result.map { ($0 - 127.5) / 127.5 }
@@ -89,7 +89,7 @@ public class QuickDrawDataset: BaseDataset {
         
         let shaped = result.reshape(columns: unitDataSize.columns).batched(into: unitDataSize.rows)
         
-        self.log(type: .success, priority: .low, message: "Successfully donwloaded dataset - \(shaped.count) samples")
+        log(type: .success, priority: .low, message: "Successfully donwloaded dataset - \(shaped.count) samples")
 
         let all = shaped.map { DatasetModel(data: Tensor($0),
                                                  label: Tensor(label)) }
@@ -105,11 +105,11 @@ public class QuickDrawDataset: BaseDataset {
           }
         }
         
-        self.data.training.append(contentsOf: training)
-        self.data.val.append(contentsOf: validation)
+        data.training.append(contentsOf: training)
+        data.val.append(contentsOf: validation)
         
       } catch {
-        self.log(type: .error, priority: .alwaysShow, message: "Error getting dataset: \(error.localizedDescription)")
+        log(type: .error, priority: .alwaysShow, message: "Error getting dataset: \(error.localizedDescription)")
         print(error.localizedDescription)
       }
     }

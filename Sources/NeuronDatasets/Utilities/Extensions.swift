@@ -17,13 +17,35 @@ extension Bundle {
 
 
 extension Float {
-  static var randomSeed: Float = 0.1
-
-  static func randomIn(_ range: ClosedRange<Float>) -> Float {
-    if Bundle.isRunningTests {
-      return randomSeed
+  static var randomSeed: UInt64 = 1234
+ 
+  static func randomIn(_ range: ClosedRange<Float>, seed: UInt64 = .random(in: 0...UInt64.max)) -> Float {
+    let seedToUse: UInt64 = if Bundle.isRunningTests {
+      randomSeed
     } else {
-      return Float.random(in: range)
+      seed
     }
+
+    var generator = SeededRandomNumberGenerator(seed: seedToUse)
+    
+    return Float.random(in: range, using: &generator)
   }
+}
+
+// A custom random number generator that uses a seed
+// A custom random number generator that uses a seed
+struct SeededRandomNumberGenerator: RandomNumberGenerator {
+    private var state: UInt64
+    
+    init(seed: UInt64) {
+        self.state = seed
+    }
+    
+    mutating func next() -> UInt64 {
+        // XorShift algorithm for pseudorandom number generation
+        state ^= state << 13
+        state ^= state >> 7
+        state ^= state << 17
+        return state
+    }
 }
