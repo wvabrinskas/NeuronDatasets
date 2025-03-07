@@ -50,7 +50,7 @@ public class QuickDrawDataset: BaseDataset {
     
     self.logLevel = logLevel
   }
-
+  
   public override func build() async -> DatasetData {
     
     for i in 0..<objectsToGet.count {
@@ -98,7 +98,7 @@ public class QuickDrawDataset: BaseDataset {
         var training: [DatasetModel] = []
         
         all.forEach { model in
-          if Float.randomIn(0...1) < self.validationSplit {
+          if Float.randomIn(0...1, seed: randomizationSeed).num < self.validationSplit {
             validation.append(model)
           } else {
             training.append(model)

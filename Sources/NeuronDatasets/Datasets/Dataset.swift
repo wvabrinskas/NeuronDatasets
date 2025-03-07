@@ -101,6 +101,8 @@ public protocol DatasetMergable: Dataset {
 }
 
 open class BaseDataset: Dataset, Logger {
+  public var randomizationSeed = UInt64.random(in: 0..<UInt64.max)
+  
   public var logLevel: LogLevel = .low
   
   public var unitDataSize: Neuron.TensorSize = .init()

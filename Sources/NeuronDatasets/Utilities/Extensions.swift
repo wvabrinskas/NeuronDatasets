@@ -19,7 +19,7 @@ extension Bundle {
 extension Float {
   static var randomSeed: UInt64 = 1234
  
-  static func randomIn(_ range: ClosedRange<Float>, seed: UInt64 = .random(in: 0...UInt64.max)) -> Float {
+  static func randomIn(_ range: ClosedRange<Float>, seed: UInt64 = .random(in: 0...UInt64.max)) -> (num: Float, seed: UInt64) {
     let seedToUse: UInt64 = if Bundle.isRunningTests {
       randomSeed
     } else {
@@ -28,7 +28,7 @@ extension Float {
 
     var generator = SeededRandomNumberGenerator(seed: seedToUse)
     
-    return Float.random(in: range, using: &generator)
+    return (Float.random(in: range, using: &generator), seed)
   }
 }
 
