@@ -144,11 +144,13 @@ public class ImageDataset: BaseDataset, DatasetMergable {
       return
     }
     
+    // if autoValidation is enabled this will build the autoValidationData object.
     let trainingSamples = readDirectory(type: .training)
+    
     let validationSamples = autoValidation ? autoValidationData : readDirectory(type: .validation)
     
     if validationSamples.isEmpty {
-      fatalError("Validation set can not be empty. Please check your dataset")
+      log(type: .message, message: "Validation data is empty.")
     }
 
     data = (trainingSamples, validationSamples)
