@@ -202,7 +202,14 @@ public class MNIST: BaseDataset, DatasetMergable {
     let columns = type.shape[safe: 0] ?? 0
     let rows = type.shape[safe: 1] ?? 0
     
-    let shaped = result.reshape(columns: columns).batched(into: rows)
+    let shaped: [[[Tensor.Scalar]]] = result.reshape(columns: columns).batched(into: rows).compactMap { value in
+      guard value.shape == [rows, columns] else {
+        log(type: .error, message: "invalid shape in image: \(value.shape)")
+        return nil
+      }
+      
+      return value
+    }
     
     return shaped
   }

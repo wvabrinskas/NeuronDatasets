@@ -15,7 +15,7 @@ import Neuron
 @available(iOS 15.0, *)
 public class QuickDrawDataset: BaseDataset {
   
-  private let trainingCount: Int
+  private let trainingCount: Int?
   @Percentage
   private var validationSplit: Float
   private var objectsToGet: [QuickDrawObject]
@@ -35,7 +35,7 @@ public class QuickDrawDataset: BaseDataset {
   public init(objectsToGet: QuickDrawObject...,
               overrideLabel: [Tensor.Scalar] = [],
               useAllClasses: Bool = true,
-              trainingCount: Int = 1000,
+              trainingCount: Int? = nil,
               validationSplit: Float = 0.2,
               zeroCentered: Bool = false,
               logLevel: LogLevel = .none) {
@@ -92,8 +92,12 @@ public class QuickDrawDataset: BaseDataset {
         
         log(type: .success, priority: .low, message: "Successfully donwloaded dataset - \(shaped.count) samples")
 
-        let all = shaped.map { DatasetModel(data: Tensor($0),
+        var all = shaped.map { DatasetModel(data: Tensor($0),
                                                  label: Tensor(label)) }
+        
+        if let trainingCount {
+          all = Array(all[0..<trainingCount])
+        }
         
         var validation: [DatasetModel] = []
         var training: [DatasetModel] = []
