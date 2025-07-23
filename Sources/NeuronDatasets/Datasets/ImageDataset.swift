@@ -239,7 +239,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         
         let label = labelsFromUrl?[index] ?? Tensor(overrideLabel)
         
-        if labelsFromUrl?[safe: index] == nil {
+        if overrideLabel.isEmpty, labelsFromUrl?[safe: index] == nil {
           fatalError("Label is missing for: \(imageUrl)")
         }
         
