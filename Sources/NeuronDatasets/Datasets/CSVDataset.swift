@@ -26,8 +26,8 @@ public typealias Header = Hashable & CSVSupporting
 /// Creates a dataset from a CSV file.
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
-public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
-
+public final class CSVDataset<K: Header>: VectorizableDataset<String> {
+    
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
     case headerMappingError
@@ -55,7 +55,6 @@ public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
     
   private let csvUrl: URL
   private let parameters: Parameters
-  private let vectorizer = Vectorizer<String>()
   private let headerToFetch: K
   private let maxCount: Int
   private let cache: NSCache<NSString, NSArray> = .init()
@@ -116,34 +115,18 @@ public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
     }
   }
   
-  public func getWord(for data: Tensor) -> [String] {
-    if parameters.oneHot == false {
-      let intArray = data.value.map { $0.map { $0.map { Int($0) }}}
-      if let int = intArray[safe: 0]?[safe: 0] {
-        return vectorizer.unvectorize(int)
-      }
-      
-      return [""]
-    } else {
-      return vectorizer.unvectorizeOneHot(data)
-    }
-  }
-  
-  public func oneHot(_ items: [String]) -> Tensor {
-    vectorizer.oneHot(items)
-  }
-  
-  
   // MARK: Private
   private func get() async throws {
     try fetchRawCSV()
     let csvData = try await getCSVData()
     
+    self.vocabSize = vectorizer.inverseVector.count
+    
     let trainingSplit = Int(floor(Tensor.Scalar(csvData.count) * (1 - validationSplitPercentage)))
     let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
     
     let csvTrainingData = Array(csvData[..<trainingSplit]).map { d in
-      let data = d
+      var data = d
       var label = d
       
       let labelRaw = Array(label.value[labelOffset...])
@@ -153,13 +136,18 @@ public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
       if labelRaw.count < headerToFetch.maxLengthOfItem() {
         let delimiter = vectorizer.oneHot(["."])
         label = label.concat(delimiter, axis: 2)
+      }
+      
+      if parameters.oneHot == false {
+        let string = vectorizer.unvectorizeOneHot(data)
+        data = vectorize(string)
       }
       
       return DatasetModel(data: data, label: overrideLabelMap ?? label)
     }
     
     let validationTrainingData = Array(csvData[trainingSplit...]).map { d in
-      let data = d
+      var data = d
       var label = d
       
       let labelRaw = Array(label.value[labelOffset...])
@@ -169,6 +157,11 @@ public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
       if labelRaw.count < headerToFetch.maxLengthOfItem() {
         let delimiter = vectorizer.oneHot(["."])
         label = label.concat(delimiter, axis: 2)
+      }
+      
+      if parameters.oneHot == false {
+        let string = vectorizer.unvectorizeOneHot(data)
+        data = vectorize(string)
       }
       
       return DatasetModel(data: data, label: overrideLabelMap ?? label)
@@ -230,11 +223,6 @@ public final class CSVDataset<K: Header>: BaseDataset, RNNSupportedDataset {
           }
           
           return vector
-        }
-        
-        guard parameters.oneHot else {
-          continuation.resume(returning: [Tensor(vectorized.map { [$0] })])
-          return
         }
         
         parsedByHeader.forEach { string in
