@@ -246,7 +246,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
         let sample = DatasetModel(data: imageData, label: label)
               
         if autoValidation, type != .validation, overrideLabel.isEmpty {
-          let labelValue = label.value.flatten().indexOfMax.0
+          let labelValue = label.storage.indexOfMax.0
           
           let random = Float.randomIn(0...1, seed: randomSeeds[safe: index, randomizationSeed])
           runningSeeds.append(random.seed)

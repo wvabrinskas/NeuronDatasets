@@ -116,13 +116,13 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let name = build.training[0].data // should be "mary" with depth of 1
     
-    let unvectorized = csvDataset.getWord(for: name).filter { $0 != "." }.joined()
+    let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
     
     XCTAssertEqual(unvectorized, "mary")
     
     let label = build.training[0].label
     
-    let unvectorizedLabel = csvDataset.getWord(for: label).filter { $0 != "." }.joined()
+    let unvectorizedLabel = csvDataset.getWord(for: label, oneHot: true).filter { $0 != "." }.joined()
     
     XCTAssertEqual(unvectorizedLabel, "ary")
   }
@@ -157,6 +157,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
                                                   headerToFetch: .name,
+                                                  labelOffset: 1,
                                                   validationSplitPercentage: splitPercentage,
                                                   parameters: .init(oneHot: true))
     
@@ -167,6 +168,11 @@ final class NeuronDatasetsTests: XCTestCase {
 
     XCTAssertEqual(build.training.count, trainingCount)
     XCTAssertEqual(build.val.count, valCount)
+    
+    let firstLabel = build.training.first!.label[0...,0...,0..<9]
+    let firstData = build.training.first!.data[0...,0...,1...] // 1 offset for label
+    
+    XCTAssertEqual(firstLabel.storage, firstData.storage)
   }
   
   func testImageDatasetDepthCheck() {
@@ -220,7 +226,7 @@ final class NeuronDatasetsTests: XCTestCase {
                                          [0,0,0,0,1],
                                          [0,0,0,0,1]]
         XCTAssertEqual(labels?.count, 4 * 5)
-        let flat = labels!.map { $0.value }.map { $0.flatten() }
+        let flat = labels!.map { Array($0.storage) }
         XCTAssertEqual(flat, expectedLabels)
       } catch {
         print(error.localizedDescription)
@@ -282,13 +288,13 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let name = build.training[0].data // should be "mary" with depth of 1
     
-    let unvectorized = csvDataset.getWord(for: name).filter { $0 != "." }.joined()
+    let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
     
     XCTAssertEqual(unvectorized, "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB".lowercased())
     
     let label = build.training[0].label
     
-    let unvectorizedLabel = csvDataset.getWord(for: label).filter { $0 != "." }.joined()
+    let unvectorizedLabel = csvDataset.getWord(for: label, oneHot: true).filter { $0 != "." }.joined()
     
     XCTAssertEqual(unvectorizedLabel, " #bitcoin books should i think about reading next? https://t.co/32gas26rkb".lowercased())
   }
@@ -343,8 +349,7 @@ final class NeuronDatasetsTests: XCTestCase {
                   dataset: csvDataset,
                   classifierParameters: RNN.ClassifierParameters(batchSize: 64,
                                                                  epochs: 100,
-                                                                 accuracyThreshold: 0.8,
-                                                                 threadWorkers: 8),
+                                                                 accuracyThreshold: .init(value: 0.8, averageCount: 5)),
                   optimizerParameters: RNN.OptimizerParameters(learningRate: 0.0002,
                                                                metricsReporter: reporter),
                   lstmParameters: RNN.RNNLSTMParameters(hiddenUnits: 256,
@@ -404,7 +409,7 @@ final class NeuronDatasetsTests: XCTestCase {
       ]
     }
     
-    let optim = Adam(network, learningRate: 0.0001)
+    let optim = Adam(network, learningRate: 0.0001, batchSize: 32)
     
     let reporter = MetricsReporter(frequency: 1,
                                    metricsToGather: [.loss,
@@ -425,7 +430,6 @@ final class NeuronDatasetsTests: XCTestCase {
     let classifier = Classifier(optimizer: optim,
                                 epochs: 10,
                                 batchSize: 32,
-                                threadWorkers: 8,
                                 log: false)
     
     let data = await MNIST().build()

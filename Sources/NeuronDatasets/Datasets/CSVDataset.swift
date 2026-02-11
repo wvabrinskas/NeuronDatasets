@@ -125,15 +125,14 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
     let trainingSplit = Int(floor(Tensor.Scalar(csvData.count) * (1 - validationSplitPercentage)))
     let overrideLabelMap = overrideLabel.isEmpty ? nil : Tensor(overrideLabel.map { Tensor.Scalar($0) })
     
-    let csvTrainingData = Array(csvData[..<trainingSplit]).map { d in
+    
+    let csvTrainingData = csvData[..<trainingSplit].map { d in
       var data = d
       var label = d
+                  
+      label = label[0..., 0..., labelOffset...]
       
-      let labelRaw = Array(label.value[labelOffset...])
-      
-      label = Tensor(labelRaw)
-      
-      if labelRaw.count < headerToFetch.maxLengthOfItem() {
+      if label.size.depth < headerToFetch.maxLengthOfItem() {
         let delimiter = vectorizer.oneHot(["."])
         label = label.concat(delimiter, axis: 2)
       }
@@ -146,15 +145,13 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
       return DatasetModel(data: data, label: overrideLabelMap ?? label)
     }
     
-    let validationTrainingData = Array(csvData[trainingSplit...]).map { d in
+    let validationTrainingData = csvData[trainingSplit...].map { d in
       var data = d
       var label = d
       
-      let labelRaw = Array(label.value[labelOffset...])
+      label = label[0..., 0..., labelOffset...]
       
-      label = Tensor(labelRaw)
-      
-      if labelRaw.count < headerToFetch.maxLengthOfItem() {
+      if label.size.depth < headerToFetch.maxLengthOfItem() {
         let delimiter = vectorizer.oneHot(["."])
         label = label.concat(delimiter, axis: 2)
       }
