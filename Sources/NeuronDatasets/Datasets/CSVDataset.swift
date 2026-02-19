@@ -96,6 +96,12 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
     super.init(unitDataSize: .init(), overrideLabel: overrideLabel ?? [])
   }
   
+  public required init(vectorizer: Vectorizer<String> = .init(),
+                       unitDataSize: Neuron.TensorSize,
+                       overrideLabel: [Tensor.Scalar] = []) {
+    fatalError("init(vectorizer:unitDataSize:overrideLabel:) has not been implemented")
+  }
+  
   public override func build() async -> DatasetData {
     do {
       try await get()
@@ -201,12 +207,10 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
         var result: [Tensor] = []
 
         // we have to vectorize first THEN we can encode
-        let vectorized = parsedByHeader.map { string in
-          let vector: [Tensor.Scalar]
-          
+        parsedByHeader.forEach { string in
           if headerToFetch.type == .character {
             let stringToVectorize = Array(string.fill(with: ".", max: headerToFetch.maxLengthOfItem()).characters[0..<headerToFetch.maxLengthOfItem()])
-            vector = vectorizer.vectorize(stringToVectorize).map { $0.asTensorScalar }
+            vectorizer.vectorize(stringToVectorize)
           } else {
             var wordsInSentence = string.split(separator: " ").map(String.init)
             for i in 0..<headerToFetch.maxLengthOfItem() {
@@ -216,10 +220,9 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
                 wordsInSentence.insert(" ", at: i)
               }
             }
-            vector = vectorizer.vectorize(Array(wordsInSentence[0..<headerToFetch.maxLengthOfItem()])).map { $0.asTensorScalar }
+            
+            vectorizer.vectorize(Array(wordsInSentence[0..<headerToFetch.maxLengthOfItem()]))
           }
-          
-          return vector
         }
         
         parsedByHeader.forEach { string in

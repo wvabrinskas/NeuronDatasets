@@ -290,13 +290,13 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
     
-    XCTAssertEqual(unvectorized, "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB".lowercased())
+    XCTAssertEqual(unvectorized, "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
     
     let label = build.training[0].label
     
     let unvectorizedLabel = csvDataset.getWord(for: label, oneHot: true).filter { $0 != "." }.joined()
     
-    XCTAssertEqual(unvectorizedLabel, " #bitcoin books should i think about reading next? https://t.co/32gas26rkb".lowercased())
+    XCTAssertEqual(unvectorizedLabel, " #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
   }
   
   
