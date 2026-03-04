@@ -8,13 +8,13 @@
 import Neuron
 import Foundation
 
-open class VectorizableDataset<VectorItem: VectorizableItem>: BaseDataset, VectorizingDataset {
+open class VectorizableDataset: BaseDataset, VectorizingDataset {
 
-  public let vectorizer: Vectorizer<VectorItem>
+  public let vectorizer: Vectorizer
   
   public var vocabSize: Int = 0
   
-  public required init(vectorizer: Vectorizer<VectorItem> = .init(),
+  public required init(vectorizer: Vectorizer = .init(),
                        unitDataSize: Neuron.TensorSize,
                        overrideLabel: [Tensor.Scalar] = []) {
     self.vectorizer = vectorizer
@@ -24,18 +24,18 @@ open class VectorizableDataset<VectorItem: VectorizableItem>: BaseDataset, Vecto
   }
 
   public static func build(url: URL) -> Self {
-    Self.init(vectorizer: Vectorizer<VectorItem>.import(url), unitDataSize: .init())
+    Self.init(vectorizer: Vectorizer.import(url), unitDataSize: .init())
   }
 
   public static func build(data: Data) -> Self {
-    return Self.init(vectorizer: Vectorizer<VectorItem>.import(data), unitDataSize: .init())
+    return Self.init(vectorizer: Vectorizer.import(data), unitDataSize: .init())
   }
   
-  public func oneHot(_ items: [VectorItem]) -> Tensor {
+  public func oneHot(_ items: [String]) -> Tensor {
     vectorizer.oneHot(items)
   }
   
-  public func vectorize(_ items: [VectorItem]) -> Tensor {
+  public func vectorize(_ items: [String]) -> Tensor {
     Tensor(items.map { [[Tensor.Scalar(vectorizer.vector[$0, default: 0])]] })
   }
   
@@ -45,7 +45,7 @@ open class VectorizableDataset<VectorItem: VectorizableItem>: BaseDataset, Vecto
   ///   - data: Tensor to decode.
   ///   - oneHot: Whether `data` uses one-hot encoding.
   /// - Returns: Decoded vector items.
-  public func getWord(for data: Tensor, oneHot: Bool) -> [VectorItem] {
+  public func getWord(for data: Tensor, oneHot: Bool) -> [String] {
     if oneHot == false {
       let intArray = data.storage.map { Int($0) }
       return vectorizer.unvectorize(intArray)

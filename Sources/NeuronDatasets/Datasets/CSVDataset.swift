@@ -26,7 +26,7 @@ public typealias Header = Hashable & CSVSupporting
 /// Creates a dataset from a CSV file.
 /// Set the K typealias to an `enum` that conforms to `Header`.
 /// This typealias will be used to get the column of data you want from the CSV
-public final class CSVDataset<K: Header>: VectorizableDataset<String> {
+public final class CSVDataset<K: Header>: VectorizableDataset {
     
   public enum CSVDatasetError: Error, LocalizedError {
     case headerMissing
@@ -96,7 +96,7 @@ public final class CSVDataset<K: Header>: VectorizableDataset<String> {
     super.init(unitDataSize: .init(), overrideLabel: overrideLabel ?? [])
   }
   
-  public required init(vectorizer: Vectorizer<String> = .init(),
+  public required init(vectorizer: Vectorizer = .init(),
                        unitDataSize: Neuron.TensorSize,
                        overrideLabel: [Tensor.Scalar] = []) {
     fatalError("init(vectorizer:unitDataSize:overrideLabel:) has not been implemented")
