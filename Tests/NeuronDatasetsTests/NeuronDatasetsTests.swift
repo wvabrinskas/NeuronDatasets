@@ -118,7 +118,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
     
-    XCTAssertEqual(unvectorized, "mary")
+    XCTAssertEqual(unvectorized, "Mary")
     
     let label = build.training[0].label
     
@@ -225,6 +225,54 @@ final class NeuronDatasetsTests: XCTestCase {
                                          [0,0,0,0,1],
                                          [0,0,0,0,1],
                                          [0,0,0,0,1]]
+        XCTAssertEqual(labels?.count, 4 * 5)
+        let flat = labels!.map { Array($0.storage) }
+        XCTAssertEqual(flat, expectedLabels)
+      } catch {
+        print(error.localizedDescription)
+      }
+ 
+      
+      XCTAssertEqual(dataset.unitDataSize, TensorSize(rows: Int(imageSize.height),
+                                                      columns: Int(imageSize.width),
+                                                      depth: depth.expectedDepth))
+    }
+  }
+  
+  func testImageDatasetLabelsCheck_nonOneHot() {
+    ImageDataset.ImageDepth.allCases.forEach { depth in
+      let imageSize = CGSize(width: 20, height: 20)
+      let imageLabels = URL(string: Bundle.module.path(forResource: "test-image-labels", ofType: "csv")!)
+    
+      let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
+                                                                       labels: imageLabels),
+                                 validation: .auto(0.2),
+                                 imageSize: imageSize,
+                                 imageDepth: depth,
+                                 oneHot: false)
+      
+      do {
+        let labels = try dataset.getLabelsIfNeeded(type: .training)
+        let expectedLabels: [[Tensor.Scalar]] = [[0],
+                                         [0],
+                                         [0],
+                                         [0],
+                                         [1],
+                                         [1],
+                                         [1],
+                                         [1],
+                                         [2],
+                                         [2],
+                                         [2],
+                                         [2],
+                                         [3],
+                                         [3],
+                                         [3],
+                                         [3],
+                                         [4],
+                                         [4],
+                                         [4],
+                                         [4]]
         XCTAssertEqual(labels?.count, 4 * 5)
         let flat = labels!.map { Array($0.storage) }
         XCTAssertEqual(flat, expectedLabels)

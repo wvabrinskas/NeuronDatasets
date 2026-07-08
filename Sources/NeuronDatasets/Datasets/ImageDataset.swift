@@ -76,6 +76,7 @@ public class ImageDataset: BaseDataset, DatasetMergable {
   private var autoValidation: Bool = false
   @Percentage
   private var validationSplit: Float = 0.0
+  private let oneHot: Bool
 
   /// Initializes an RGB ImageDataset. This call throws an error if the
   /// - Parameters:
@@ -95,13 +96,15 @@ public class ImageDataset: BaseDataset, DatasetMergable {
               label: [Tensor.Scalar] = [],
               imageDepth: ImageDepth,
               maxCount: Int = 0,
-              zeroCentered: Bool = false) {
+              zeroCentered: Bool = false,
+              oneHot: Bool = true) {
 
     self.zeroCentered = zeroCentered
     self.maxCount = maxCount
     self.imageDepth = imageDepth
     self.imageSorting = imageSorting
     self.trainingData = trainingData
+    self.oneHot = oneHot
     
     switch validation {
     case .auto(let split):
@@ -199,10 +202,14 @@ public class ImageDataset: BaseDataset, DatasetMergable {
     var labelsToReturn: [Tensor] = []
     var zeros = [Tensor.Scalar](repeating: 0, count: Int(maxLabel))
     parsedCSV.forEach { val in
-      let index = Int(val - 1)
-      zeros[index] = 1.0
-      labelsToReturn.append(Tensor(zeros))
-      zeros[index] = 0.0
+      if oneHot {
+        let index = Int(val - 1)
+        zeros[index] = 1.0
+        labelsToReturn.append(Tensor(zeros))
+        zeros[index] = 0.0
+      } else {
+        labelsToReturn.append(Tensor(val - 1))
+      }
     }
     
     return labelsToReturn
