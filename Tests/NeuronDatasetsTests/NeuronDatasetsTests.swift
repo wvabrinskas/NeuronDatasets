@@ -40,7 +40,20 @@ private final class TestDataset: BaseDataset, DatasetMergable {
 
 
 final class NeuronDatasetsTests: XCTestCase {
-
+  enum TestHeaders: String, TextSequenceDatasetSupporting {
+    case id = "Id"
+    case name = "Name"
+    
+    var maxSequenceLength: Int {
+      switch self {
+      case .name:
+        return 10
+      default:
+        return 1
+      }
+    }
+  }
+  
   func test_randomSeed() {
     let seed: UInt64 = 1234
     let firstRandom = Float.randomIn(0...1, seed: seed).num
@@ -79,75 +92,75 @@ final class NeuronDatasetsTests: XCTestCase {
     // CIFAR doesn't have validation
   }
   
-  func testCSVDataset_unvectorize() async {
-    enum TestHeaders: String, CSVSupporting {
-      case id = "Id"
-      case name = "Name"
-      
-      var type: CSVType { .character }
-      
-      func order() -> [TestHeaders] {
-        Self.allCases
-      }
-      
-      func maxLengthOfItem() -> Int {
-        switch self {
-        case .name:
-          return 10
-        default:
-          return 1
-        }
-      }
+  /// Asserts `label` is `data` advanced by exactly one token and terminated with `<eos>`.
+  ///
+  /// The shift is positional, not textual. `<bos>` and `<eos>` are control tokens that decoding
+  /// skips, so `item(for:)` renders the same string for both tensors — the relationship is only
+  /// visible at the token level.
+  private func assertNextTokenShift(data dataTensor: Tensor,
+                                    label labelTensor: Tensor,
+                                    bos: Int,
+                                    eos: Int,
+                                    pad: Int,
+                                    file: StaticString = #filePath,
+                                    line: UInt = #line) {
+    let data = dataTensor.storage.map { Int($0) }
+    let label = labelTensor.storage.map { Int($0) }
+
+    XCTAssertEqual(data.count, label.count,
+                   "input and label must span the same timesteps",
+                   file: file, line: line)
+    XCTAssertEqual(data.first, bos, "input should start with <bos>", file: file, line: line)
+
+    guard let eosIndex = label.firstIndex(of: eos) else {
+      XCTFail("label should terminate with <eos>", file: file, line: line)
+      return
     }
+
+    // Up to the terminator, timestep i is scored on the token that follows it.
+    for i in 0..<eosIndex {
+      XCTAssertEqual(label[i], data[i + 1],
+                     "label[\(i)] should equal data[\(i + 1)]",
+                     file: file, line: line)
+    }
+
+    // <eos> has no counterpart in the input — it is the token the model must learn to emit
+    // after the last real one — and everything past it is padding in both tensors.
+    for i in (eosIndex + 1)..<label.count {
+      XCTAssertEqual(label[i], pad, "label[\(i)] should be padding", file: file, line: line)
+      XCTAssertEqual(data[i], pad, "data[\(i)] should be padding", file: file, line: line)
+    }
+  }
+
+  func testCSVDataset_unvectorize() async {
     
     let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
-    
-    let splitPercentage: Tensor.Scalar = 0.2
-    
-    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
-                                                  headerToFetch: .name,
-                                                  validationSplitPercentage: splitPercentage,
-                                                  parameters: .init(oneHot: true))
+        
+    let csvDataset = TextSequenceDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                           headerToFetch: .name,
+                                                           targetVocabSize: 25)
     
     let build = await csvDataset.build()
     
-    let name = build.training[0].data // should be "mary" with depth of 1
-    
-    let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
-    
-    XCTAssertEqual(unvectorized, "Mary")
-    
-    let label = build.training[0].label
-    
-    let unvectorizedLabel = csvDataset.getWord(for: label, oneHot: true).filter { $0 != "." }.joined()
-    
-    XCTAssertEqual(unvectorizedLabel, "ary")
+    let sample = build.training[0]
+
+    XCTAssertEqual(csvDataset.item(for: sample.data), "Mary")
+
+    // The label is the input advanced by one *token*, not one character. Decoding skips the
+    // <bos>/<eos> wrapper, so the label renders as the same text as the input.
+    XCTAssertEqual(csvDataset.item(for: sample.label), "Mary")
+
+    assertNextTokenShift(data: sample.data,
+                         label: sample.label,
+                         bos: csvDataset.bosTokenId,
+                         eos: csvDataset.eosTokenId,
+                         pad: csvDataset.padTokenId)
   }
   
   func testCSVDataset() async {
-    enum TestHeaders: String, CSVSupporting {
-      case id = "Id"
-      case name = "Name"
-      
-      var type: CSVType { .character }
-      
-      func order() -> [TestHeaders] {
-        Self.allCases
-      }
-      
-      func maxLengthOfItem() -> Int {
-        switch self {
-        case .name:
-          return 10
-        default:
-          return 1
-        }
-      }
-    }
-    
     let path = Bundle.module.path(forResource: "smallBabyNamesTest", ofType: "csv")
     
     XCTAssertNotNil(path)
@@ -155,24 +168,28 @@ final class NeuronDatasetsTests: XCTestCase {
     
     let splitPercentage: Tensor.Scalar = 0.2
     
-    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
-                                                  headerToFetch: .name,
-                                                  labelOffset: 1,
-                                                  validationSplitPercentage: splitPercentage,
-                                                  parameters: .init(oneHot: true))
+    let csvDataset = TextSequenceDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                           headerToFetch: .name,
+                                                           targetVocabSize: 25,
+                                                           validationSplitPercentage: splitPercentage)
     
     let build = await csvDataset.build()
     
     let trainingCount = Int(floor(Tensor.Scalar(970 - 1) * Tensor.Scalar(1 - splitPercentage)))
     let valCount = (970 - 1) - trainingCount
-
+    
     XCTAssertEqual(build.training.count, trainingCount)
     XCTAssertEqual(build.val.count, valCount)
     
-    let firstLabel = build.training.first!.label[0...,0...,0..<9]
-    let firstData = build.training.first!.data[0...,0...,1...] // 1 offset for label
-    
-    XCTAssertEqual(firstLabel.storage, firstData.storage)
+    let sample = build.training.first!
+
+    // `label == data.dropFirst()` does not hold exactly: the label carries an <eos> where the
+    // input has already run out of content, so the two agree only up to the terminator.
+    assertNextTokenShift(data: sample.data,
+                         label: sample.label,
+                         bos: csvDataset.bosTokenId,
+                         eos: csvDataset.eosTokenId,
+                         pad: csvDataset.padTokenId)
   }
   
   func testImageDatasetDepthCheck() {
@@ -196,7 +213,7 @@ final class NeuronDatasetsTests: XCTestCase {
     ImageDataset.ImageDepth.allCases.forEach { depth in
       let imageSize = CGSize(width: 20, height: 20)
       let imageLabels = URL(string: Bundle.module.path(forResource: "test-image-labels", ofType: "csv")!)
-    
+      
       let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
                                                                        labels: imageLabels),
                                  validation: .auto(0.2),
@@ -206,32 +223,32 @@ final class NeuronDatasetsTests: XCTestCase {
       do {
         let labels = try dataset.getLabelsIfNeeded(type: .training)
         let expectedLabels: [[Tensor.Scalar]] = [[1,0,0,0,0],
-                                         [1,0,0,0,0],
-                                         [1,0,0,0,0],
-                                         [1,0,0,0,0],
-                                         [0,1,0,0,0],
-                                         [0,1,0,0,0],
-                                         [0,1,0,0,0],
-                                         [0,1,0,0,0],
-                                         [0,0,1,0,0],
-                                         [0,0,1,0,0],
-                                         [0,0,1,0,0],
-                                         [0,0,1,0,0],
-                                         [0,0,0,1,0],
-                                         [0,0,0,1,0],
-                                         [0,0,0,1,0],
-                                         [0,0,0,1,0],
-                                         [0,0,0,0,1],
-                                         [0,0,0,0,1],
-                                         [0,0,0,0,1],
-                                         [0,0,0,0,1]]
+                                                 [1,0,0,0,0],
+                                                 [1,0,0,0,0],
+                                                 [1,0,0,0,0],
+                                                 [0,1,0,0,0],
+                                                 [0,1,0,0,0],
+                                                 [0,1,0,0,0],
+                                                 [0,1,0,0,0],
+                                                 [0,0,1,0,0],
+                                                 [0,0,1,0,0],
+                                                 [0,0,1,0,0],
+                                                 [0,0,1,0,0],
+                                                 [0,0,0,1,0],
+                                                 [0,0,0,1,0],
+                                                 [0,0,0,1,0],
+                                                 [0,0,0,1,0],
+                                                 [0,0,0,0,1],
+                                                 [0,0,0,0,1],
+                                                 [0,0,0,0,1],
+                                                 [0,0,0,0,1]]
         XCTAssertEqual(labels?.count, 4 * 5)
         let flat = labels!.map { Array($0.storage) }
         XCTAssertEqual(flat, expectedLabels)
       } catch {
         print(error.localizedDescription)
       }
- 
+      
       
       XCTAssertEqual(dataset.unitDataSize, TensorSize(rows: Int(imageSize.height),
                                                       columns: Int(imageSize.width),
@@ -243,7 +260,7 @@ final class NeuronDatasetsTests: XCTestCase {
     ImageDataset.ImageDepth.allCases.forEach { depth in
       let imageSize = CGSize(width: 20, height: 20)
       let imageLabels = URL(string: Bundle.module.path(forResource: "test-image-labels", ofType: "csv")!)
-    
+      
       let dataset = ImageDataset(trainingData: ImageDataset.ImageModel(images: URL(string: "https://images.com")!,
                                                                        labels: imageLabels),
                                  validation: .auto(0.2),
@@ -254,32 +271,32 @@ final class NeuronDatasetsTests: XCTestCase {
       do {
         let labels = try dataset.getLabelsIfNeeded(type: .training)
         let expectedLabels: [[Tensor.Scalar]] = [[0],
-                                         [0],
-                                         [0],
-                                         [0],
-                                         [1],
-                                         [1],
-                                         [1],
-                                         [1],
-                                         [2],
-                                         [2],
-                                         [2],
-                                         [2],
-                                         [3],
-                                         [3],
-                                         [3],
-                                         [3],
-                                         [4],
-                                         [4],
-                                         [4],
-                                         [4]]
+                                                 [0],
+                                                 [0],
+                                                 [0],
+                                                 [1],
+                                                 [1],
+                                                 [1],
+                                                 [1],
+                                                 [2],
+                                                 [2],
+                                                 [2],
+                                                 [2],
+                                                 [3],
+                                                 [3],
+                                                 [3],
+                                                 [3],
+                                                 [4],
+                                                 [4],
+                                                 [4],
+                                                 [4]]
         XCTAssertEqual(labels?.count, 4 * 5)
         let flat = labels!.map { Array($0.storage) }
         XCTAssertEqual(flat, expectedLabels)
       } catch {
         print(error.localizedDescription)
       }
- 
+      
       
       XCTAssertEqual(dataset.unitDataSize, TensorSize(rows: Int(imageSize.height),
                                                       columns: Int(imageSize.width),
@@ -288,7 +305,7 @@ final class NeuronDatasetsTests: XCTestCase {
   }
   
   func testCSVDataset_Sentence() async {
-    enum TestHeaders: String, CSVSupporting {
+    enum TestHeaders: String, TextSequenceDatasetSupporting {
       case username = "user_name"
       case userLocation = "user_location"
       case userDescription = "user_description"
@@ -304,13 +321,7 @@ final class NeuronDatasetsTests: XCTestCase {
       case isRetweet = "isRetweet"
       //user_name,user_location,user_description,user_created,user_followers,user_friends,user_favourites,user_verified,date,text,hashtags,source,is_retweet
       
-      var type: CSVType { .sentence }
-      
-      func order() -> [TestHeaders] {
-        Self.allCases
-      }
-      
-      func maxLengthOfItem() -> Int {
+      var maxSequenceLength: Int {
         switch self {
         case .text:
           return 140
@@ -324,27 +335,25 @@ final class NeuronDatasetsTests: XCTestCase {
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
-    
-    let splitPercentage: Tensor.Scalar = 0.2
-    
-    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
-                                                  headerToFetch: .text,
-                                                  validationSplitPercentage: splitPercentage,
-                                                  parameters: .init(oneHot: true))
+        
+    let csvDataset = TextSequenceDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                           headerToFetch: .text,
+                                                           targetVocabSize: 25)
     
     let build = await csvDataset.build()
     
-    let name = build.training[0].data // should be "mary" with depth of 1
-    
-    let unvectorized = csvDataset.getWord(for: name, oneHot: true).filter { $0 != "." }.joined()
-    
-    XCTAssertEqual(unvectorized, "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
-    
-    let label = build.training[0].label
-    
-    let unvectorizedLabel = csvDataset.getWord(for: label, oneHot: true).filter { $0 != "." }.joined()
-    
-    XCTAssertEqual(unvectorizedLabel, " #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
+    let sample = build.training[0]
+
+    XCTAssertEqual(csvDataset.item(for: sample.data), "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
+
+    // Positional shift, so the label decodes to the same sentence as the input.
+    XCTAssertEqual(csvDataset.item(for: sample.label), "Which #bitcoin books should I think about reading next? https://t.co/32gas26rKB")
+
+    assertNextTokenShift(data: sample.data,
+                         label: sample.label,
+                         bos: csvDataset.bosTokenId,
+                         eos: csvDataset.eosTokenId,
+                         pad: csvDataset.padTokenId)
   }
   
   
@@ -355,17 +364,11 @@ final class NeuronDatasetsTests: XCTestCase {
       return
     }
     
-    enum TestHeaders: String, CSVSupporting {
+    enum TestHeaders: String, TextSequenceDatasetSupporting {
       case id = "Id"
       case name = "Name"
       
-      var type: CSVType { .character }
-      
-      func order() -> [TestHeaders] {
-        Self.allCases
-      }
-      
-      func maxLengthOfItem() -> Int {
+      var maxSequenceLength: Int {
         switch self {
         case .name:
           return 10
@@ -379,13 +382,10 @@ final class NeuronDatasetsTests: XCTestCase {
     
     XCTAssertNotNil(path)
     guard let path, let pathUrl = URL(string: path) else { return }
-    
-    let splitPercentage: Tensor.Scalar = 0.2
-    
-    let csvDataset = CSVDataset<TestHeaders>.init(csvUrl: pathUrl,
-                                                  headerToFetch: .name,
-                                                  validationSplitPercentage: splitPercentage,
-                                                  parameters: .init(oneHot: true))
+        
+    let csvDataset = TextSequenceDataset<TestHeaders>.init(csvUrl: pathUrl,
+                                                           headerToFetch: .name,
+                                                           targetVocabSize: 25)
     
     let reporter = MetricsReporter(frequency: 1,
                                    metricsToGather: [.loss,
@@ -421,7 +421,7 @@ final class NeuronDatasetsTests: XCTestCase {
     
     await rnn.train()
   }
-
+  
   func testMNISTClassifier() async {
     guard isGithubCI == false else {
       XCTAssert(true)
@@ -481,7 +481,7 @@ final class NeuronDatasetsTests: XCTestCase {
                                 log: false)
     
     let data = await MNIST().build()
-  
+    
     classifier.fit(data.training, data.val)
   }
 }
