@@ -18,7 +18,7 @@ public typealias Header = Hashable & TextSequenceDatasetSupporting
 /// This typealias will be used to get the column of data you want from the CSV
 public final class TextSequenceDataset<K: Header>: ProxyTokenizableDataset {
     
-  public enum CSVDatasetError: Error, LocalizedError {
+  public enum TextSequenceDatasetError: Error, LocalizedError {
     case headerMissing
     case headerMappingError
     case couldNotMap
@@ -73,7 +73,9 @@ public final class TextSequenceDataset<K: Header>: ProxyTokenizableDataset {
     fatalError("init(vectorizer:unitDataSize:overrideLabel:) has not been implemented")
   }
   
-  public required init(tokenizer: Tokenizer, unitDataSize: Neuron.TensorSize, overrideLabel: [Tensor.Scalar] = []) {
+  public required init(tokenizer: Tokenizer,
+                       unitDataSize: Neuron.TensorSize,
+                       overrideLabel: [Tensor.Scalar] = []) {
     fatalError("init(tokenizer:unitDataSize:overrideLabel:) has not been implemented")
   }
   
@@ -127,7 +129,7 @@ public final class TextSequenceDataset<K: Header>: ProxyTokenizableDataset {
     
     guard var parsedCSV,
           let headers = parsedCSV[safe: 0]?.components(separatedBy: ",") else {
-      throw CSVDatasetError.headerMissing
+      throw TextSequenceDatasetError.headerMissing
     }
     
     let kHeaders = headers.map { K(rawValue: $0) }.compactMap { $0 }
