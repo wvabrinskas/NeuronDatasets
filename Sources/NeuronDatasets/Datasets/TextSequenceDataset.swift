@@ -67,12 +67,6 @@ public final class TextSequenceDataset<K: Header>: ProxyTokenizableDataset {
                overrideLabel: overrideLabel)
   }
   
-  public required init(vectorizer: Vectorizer = .init(),
-                       unitDataSize: Neuron.TensorSize,
-                       overrideLabel: [Tensor.Scalar] = []) {
-    fatalError("init(vectorizer:unitDataSize:overrideLabel:) has not been implemented")
-  }
-  
   public required init(tokenizer: Tokenizer,
                        unitDataSize: Neuron.TensorSize,
                        overrideLabel: [Tensor.Scalar] = []) {
